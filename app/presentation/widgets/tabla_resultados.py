@@ -119,6 +119,18 @@ class PanelResultados(QWidget):
             html += f"<li>{etiqueta}: {valor:.5g}</li>"
         html += "</ul>"
 
+        # Explicacion de POR QUE este circuito se considera mejor que
+        # el segundo mas cercano (con los numeros reales de ESTE
+        # analisis, no en abstracto) -- devuelve cadena vacia si hay
+        # empate estadistico, porque ese caso ya lo cubre el aviso de
+        # empate un poco mas abajo.
+        texto_comparacion = textos_educativos.texto_por_que_es_mejor(resultado)
+        if texto_comparacion:
+            html += (
+                "<p style='background-color:#f0f5fa; padding:8px; "
+                "border-radius:4px;'>" + texto_comparacion + "</p>"
+            )
+
         empatados = resultado.empatados
         if len(empatados) > 1:
             nombres_emp = [r.nombre for r in empatados]

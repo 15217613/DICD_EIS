@@ -32,7 +32,26 @@ def test_numero_de_parametros_coincide_con_el_string_del_circuito():
         "randles_simple": 3,     # Rs, Rct, Cdl
         "randles_cpe": 4,        # Rs, Rct, Q, n
         "randles_warburg": 6,    # Rs, Rct, Wo_mag, Wo_tau, Q, n
+        "randles_warburg_semiinfinito": 6,  # Rs, Rct, Wo_mag, Wo_tau, Q, n
         "dos_constantes_tiempo": 7,  # Rs, R1, Q1, n1, R2, Q2, n2
     }
     for nombre, cantidad in conteo_esperado.items():
         assert len(CIRCUITOS[nombre].parametros) == cantidad
+
+
+def test_randles_warburg_y_semiinfinito_usan_elementos_warburg_distintos():
+    """
+    Chequeo especifico para no confundir los dos circuitos de Warburg
+    de la biblioteca: deben tener el MISMO orden de parametros (para
+    que la interfaz los trate igual), pero un string de circuito
+    DISTINTO -- randles_warburg usa 'Ws' (frontera cerrada) y
+    randles_warburg_semiinfinito usa 'Wo' (frontera abierta). Si algun
+    dia alguien copia y pega mal, esta prueba lo detecta.
+    """
+    finito = CIRCUITOS["randles_warburg"]
+    semiinfinito = CIRCUITOS["randles_warburg_semiinfinito"]
+
+    assert finito.parametros == semiinfinito.parametros
+    assert "Ws1" in finito.circuito
+    assert "Wo1" in semiinfinito.circuito
+    assert finito.circuito != semiinfinito.circuito

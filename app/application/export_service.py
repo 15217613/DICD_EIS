@@ -7,14 +7,15 @@ orden) y arma los "bloques" que espera infrastructure/pdf_writer.py --
 pero no sabe nada de COMO se dibuja un PDF (eso es infrastructure) ni
 de PySide6 (eso es presentation).
 
-Nota de arquitectura sobre nombres_bonitos/nombres_parametros_bonitos:
-esta capa (application) NO puede importar presentation/textos_educativos.py
-(romperia la regla de que las capas de abajo no dependen de las de
-arriba). En vez de eso, quien llama a exportar_reporte_pdf (la
-ventana, en presentation/) le PASA esos diccionarios de nombres ya
-armados. Si no se pasan, el reporte usa los nombres tecnicos crudos
-(Rs, Rct, etc.) en vez de las versiones en espanol legible -- sigue
-siendo un reporte correcto y completo, solo menos pulido.
+Nota de arquitectura sobre nombres_bonitos/nombres_parametros_bonitos/
+ejemplos_sistemas: esta capa (application) NO puede importar
+presentation/textos_educativos.py (romperia la regla de que las capas
+de abajo no dependen de las de arriba). En vez de eso, quien llama a
+exportar_reporte_pdf (la ventana, en presentation/) le PASA esos
+diccionarios de nombres/textos ya armados. Si no se pasan, el reporte
+usa los nombres tecnicos crudos (Rs, Rct, etc.) y omite la seccion de
+ejemplos -- sigue siendo un reporte correcto y completo, solo menos
+pulido.
 """
 
 import datetime
@@ -32,16 +33,30 @@ def exportar_reporte_pdf(
     ruta_imagen_grafica: str = None,
     nombres_bonitos: dict = None,
     nombres_parametros_bonitos: dict = None,
+    ejemplos_sistemas: dict = None,
+    texto_comparacion_modelos: str = None,
 ):
     """
     Genera un PDF con el resumen de Kramers-Kronig, la tabla
-    comparativa de circuitos, los parametros del mejor circuito
-    encontrado, y (si se provee) la grafica de Nyquist como imagen.
+    comparativa de circuitos, los parametros del mejor ajuste, en que
+    materiales/sistemas reales suele aparecer ese circuito (si se
+    provee ejemplos_sistemas), por que ese circuito se considera mejor
+    que el segundo mas cercano (si se provee texto_comparacion_modelos),
+    y (si se provee) la grafica de Nyquist como imagen.
+
+    Nota de arquitectura sobre texto_comparacion_modelos: por la misma
+    razon que nombres_bonitos/ejemplos_sistemas (ver docstring del
+    modulo), este texto ya viene REDACTADO por quien llama a esta
+    funcion (normalmente main_window.py, usando
+    textos_educativos.texto_por_que_es_mejor) -- esta capa
+    (application) no puede generar ese texto ella misma porque
+    necesitaria importar presentation/textos_educativos.py.
 
     Devuelve la ruta del archivo generado (la misma que ruta_salida).
     """
     nombres_bonitos = nombres_bonitos or {}
     nombres_parametros_bonitos = nombres_parametros_bonitos or {}
+    ejemplos_sistemas = ejemplos_sistemas or {}
 
     def nombre_bonito(nombre):
         return nombres_bonitos.get(nombre, nombre)
@@ -142,6 +157,32 @@ def exportar_reporte_pdf(
             "encabezados": ["Parametro", "Valor"],
             "filas": filas_parametros,
         })
+
+        bloques.append({
+            "tipo": "parrafo",
+            "texto": (
+                f"<b>Notacion tecnica (impedance.py):</b> "
+                f"{CIRCUITOS[mejor.nombre].circuito}"
+            ),
+        })
+
+        texto_ejemplos = ejemplos_sistemas.get(mejor.nombre)
+        if texto_ejemplos:
+            bloques.append({"tipo": "espacio", "alto_pt": 6})
+            bloques.append({
+                "tipo": "parrafo",
+                "texto": (
+                    f"<b>¿Donde se ve este circuito en la practica?</b> "
+                    f"{texto_ejemplos}"
+                ),
+            })
+
+        if texto_comparacion_modelos:
+            bloques.append({"tipo": "espacio", "alto_pt": 6})
+            bloques.append({
+                "tipo": "parrafo",
+                "texto": texto_comparacion_modelos,
+            })
 
         if len(resultado.empatados) > 1:
             nombres_emp = ", ".join(

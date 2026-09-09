@@ -33,6 +33,16 @@ CIRCUITOS = {
         circuito="R0-p(R1-Ws1,CPE1)",
         parametros=["Rs", "Rct", "Wo_mag", "Wo_tau", "Q", "n"],
     ),
+    "randles_warburg_semiinfinito": DefinicionCircuito(
+        nombre="randles_warburg_semiinfinito",
+        # Aqui SI usamos "Wo" (coth, frontera "abierta"/bloqueante):
+        # representa difusion hacia un espacio tan grande que, dentro
+        # del rango de frecuencias medido, nunca "se nota" que hay un
+        # limite -- a diferencia de randles_warburg (Ws), que asume una
+        # barrera que SI se alcanza a ver en la medicion.
+        circuito="R0-p(R1-Wo1,CPE1)",
+        parametros=["Rs", "Rct", "Wo_mag", "Wo_tau", "Q", "n"],
+    ),
     "dos_constantes_tiempo": DefinicionCircuito(
         nombre="dos_constantes_tiempo",
         circuito="R0-p(R1,CPE1)-p(R2,CPE2)",
@@ -56,6 +66,10 @@ FORMULAS_HTML = {
     "randles_warburg": (
         "Z(&omega;) = R<sub>s</sub> + "
         "[1 &frasl; (R<sub>ct</sub>+Z<sub>W</sub>) + 1 &frasl; Z<sub>CPE</sub>]<sup>-1</sup>"
+    ),
+    "randles_warburg_semiinfinito": (
+        "Z(&omega;) = R<sub>s</sub> + "
+        "[1 &frasl; (R<sub>ct</sub>+Z<sub>Wo</sub>) + 1 &frasl; Z<sub>CPE</sub>]<sup>-1</sup>"
     ),
     "dos_constantes_tiempo": (
         "Z(&omega;) = R<sub>s</sub> + "

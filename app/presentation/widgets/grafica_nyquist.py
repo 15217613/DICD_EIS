@@ -272,10 +272,33 @@ class PanelGraficaNyquist(QWidget):
         self.canvas_diagrama_mini.draw_idle()
 
         formula = domain_circuits.FORMULAS_HTML.get(nombre, "")
+        notacion_tecnica = domain_circuits.CIRCUITOS[nombre].circuito
         descripcion = textos_educativos.DESCRIPCION_CIRCUITOS.get(nombre, "")
-        self.texto_formula_mini.setText(
+        ejemplos = textos_educativos.ejemplos_sistemas(nombre)
+
+        html = (
             f"<b>{textos_educativos.nombre_bonito(nombre)}</b> &nbsp; {formula}"
+            f"<br><span style='font-family: monospace; color:#7a3b96; "
+            f"font-size:11px;'>Notacion tecnica (impedance.py): "
+            f"<b>{notacion_tecnica}</b></span>"
             f"<br><span style='color:#555; font-size:11px;'>{descripcion}</span>"
+        )
+        if ejemplos:
+            # Se muestra en una linea aparte y con un color distinto
+            # para separarla visualmente de la descripcion tecnica de
+            # arriba -- una explica QUE es cada elemento, la otra
+            # DONDE se usa en la practica.
+            html += (
+                "<br><span style='color:#2c5f8a; font-size:11px;'>"
+                f"<b>¿Donde se ve en la practica?</b> {ejemplos}</span>"
+            )
+        self.texto_formula_mini.setText(html)
+        # La notacion tecnica (guiones, "p(...)", etc.) no es obvia a
+        # simple vista -- se explica con un tooltip en vez de saturar
+        # el panel con un parrafo extra cada vez que se elige un
+        # circuito.
+        self.texto_formula_mini.setToolTip(
+            textos_educativos.texto_notacion_impedance()
         )
 
     def _buscar_resultado_circuito(self, nombre):

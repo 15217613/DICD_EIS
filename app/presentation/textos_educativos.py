@@ -35,6 +35,15 @@ DESCRIPCION_CIRCUITOS = {
         "electrodo). Aparece cuando, ademas de la reaccion en la "
         "superficie, el transporte de materia tambien limita el proceso."
     ),
+    "randles_warburg_semiinfinito": (
+        "Circuito de Randles con Warburg semi-infinito (frontera "
+        "abierta). Es muy parecido al Warburg finito, pero representa "
+        "difusion hacia un espacio TAN grande que, dentro del tiempo "
+        "que dura la medicion, nunca se nota que existe un limite del "
+        "otro lado (por ejemplo, difusion hacia el volumen de una "
+        "solucion, en vez de hacia una capa delgada con un borde "
+        "definido)."
+    ),
     "dos_constantes_tiempo": (
         "Circuito con dos constantes de tiempo. Representa DOS procesos "
         "distintos ocurriendo a distinta velocidad (por ejemplo, una "
@@ -45,10 +54,74 @@ DESCRIPCION_CIRCUITOS = {
     ),
 }
 
+# ---------------------------------------------------------------------------
+# En que materiales/dispositivos/sistemas reales se suele encontrar cada
+# circuito. Esto es DISTINTO de DESCRIPCION_CIRCUITOS (que explica que
+# representa cada elemento matematicamente): aqui el enfoque es "donde
+# lo veria un estudiante en la practica", para conectar la formula con
+# algo tangible del mundo real -- util para el marco pedagogico del
+# proyecto (automatizar el calculo no sirve de nada si el estudiante no
+# entiende PARA QUE sirve el modelo en un sistema real).
+# ---------------------------------------------------------------------------
+EJEMPLOS_SISTEMAS = {
+    "randles_simple": (
+        "Se ve en sistemas casi ideales, con superficies muy lisas y "
+        "limpias: electrodos de metales nobles (oro, platino) en un "
+        "electrolito simple, celdas de laboratorio recien pulidas, o "
+        "sistemas de referencia usados para calibrar un equipo. En la "
+        "practica es poco comun encontrarlo en materiales reales de uso "
+        "diario, porque casi ninguna superficie es tan perfecta."
+    ),
+    "randles_cpe": (
+        "Es el mas comun en la practica. Aparece en corrosion de "
+        "metales con una capa de oxido natural (acero, aluminio, "
+        "cobre), en recubrimientos y pinturas anticorrosivas, en "
+        "electrodos porosos de baterias y supercapacitores, y en "
+        "biosensores (por ejemplo, electrodos en contacto con tejido o "
+        "fluidos biologicos). La rugosidad o porosidad de casi "
+        "cualquier superficie real es justo lo que representa el CPE."
+    ),
+    "randles_warburg": (
+        "Aparece cuando, ademas de la reaccion en la superficie, el "
+        "transporte de iones tambien limita el proceso: baterias de "
+        "litio durante la carga/descarga, supercapacitores, celdas de "
+        "combustible, y sensores electroquimicos donde el analito tarda "
+        "en llegar al electrodo (por ejemplo, sensores de glucosa). "
+        "Tambien se ve en corrosion bajo peliculas o recubrimientos "
+        "gruesos, donde las especies quimicas tardan en difundirse a "
+        "traves de la capa."
+    ),
+    "randles_warburg_semiinfinito": (
+        "Aparece en sistemas donde la difusion ocurre hacia un volumen "
+        "grande, sin una barrera cercana: electrodos sumergidos "
+        "directamente en una solucion (no en una capa delgada), "
+        "sensores electroquimicos en fluidos abiertos (por ejemplo, "
+        "agua de rio o sangre en flujo libre), y algunas baterias o "
+        "celdas de combustible durante las primeras etapas de "
+        "descarga, antes de que el efecto de los bordes o separadores "
+        "internos se vuelva importante. La diferencia practica con "
+        "randles_warburg es sutil: ambos representan difusion, pero "
+        "este se usa cuando NO hay evidencia de que la difusion "
+        "'choque' contra un limite dentro del rango de frecuencias "
+        "medido."
+    ),
+    "dos_constantes_tiempo": (
+        "Tipico de sistemas con DOS capas o interfaces distintas "
+        "trabajando a velocidades diferentes: metal recubierto con "
+        "pintura o un recubrimiento protector (una constante de tiempo "
+        "para el recubrimiento, otra para el metal debajo si el "
+        "recubrimiento ya empezo a fallar), materiales compuestos con "
+        "dos fases, o membranas biologicas con dos barreras (por "
+        "ejemplo, una membrana celular y una capa adicional de "
+        "biopelicula)."
+    ),
+}
+
 NOMBRES_BONITOS = {
     "randles_simple": "Randles simple",
     "randles_cpe": "Randles con CPE",
     "randles_warburg": "Randles con Warburg (difusion)",
+    "randles_warburg_semiinfinito": "Randles con Warburg semi-infinito",
     "dos_constantes_tiempo": "Dos constantes de tiempo",
 }
 
@@ -152,6 +225,33 @@ def nombre_parametro_bonito(nombre_parametro):
     return NOMBRES_PARAMETROS_BONITOS.get(nombre_parametro, nombre_parametro)
 
 
+def ejemplos_sistemas(nombre_circuito):
+    """Devuelve el texto de 'donde se ve esto en la practica' para un
+    circuito dado, o una cadena vacia si no hay texto registrado (por
+    ejemplo, si en el futuro se agrega un circuito nuevo a la
+    biblioteca y todavia no se redacta su ejemplo)."""
+    return EJEMPLOS_SISTEMAS.get(nombre_circuito, "")
+
+
+def texto_notacion_impedance():
+    """
+    Explica, UNA sola vez (se reutiliza como tooltip en varios lugares
+    de la interfaz), que significa la notacion tecnica que usa la
+    libreria impedance.py para describir un circuito como texto (por
+    ejemplo "R0-p(R1,CPE1)") -- distinta de la formula matematica en
+    FORMULAS_HTML, que ya esta en notacion de impedancia electrica
+    tradicional (Z(omega) = ...).
+    """
+    return (
+        "Notacion de la libreria impedance.py: los elementos separados "
+        "por un guion (-) estan en SERIE. 'p(a,b)' significa que a y b "
+        "estan en PARALELO. Los numeros (R0, R1, CPE1...) distinguen "
+        "elementos del mismo tipo cuando hay mas de uno. CPE = elemento "
+        "de fase constante (superficie no ideal). Ws = elemento de "
+        "Warburg finito (difusion limitada por una barrera)."
+    )
+
+
 # ---------------------------------------------------------------------------
 # Mensajes segun el resultado de cada paso del analisis.
 # ---------------------------------------------------------------------------
@@ -200,12 +300,107 @@ def texto_resultado_circuito(nombre_circuito, aic, bic, valido, motivo):
 
 def texto_mejor_circuito(nombre_circuito, peso_akaike):
     bonito = nombre_bonito(nombre_circuito)
-    return (
+    ejemplos = ejemplos_sistemas(nombre_circuito)
+    texto = (
         f"El modelo que mejor describe tus datos es: {bonito}.\n"
         f"Con un {peso_akaike*100:.1f}% de probabilidad relativa de ser el "
         "mejor modelo entre los que se probaron (peso de Akaike).\n\n"
         f"{DESCRIPCION_CIRCUITOS.get(nombre_circuito, '')}"
     )
+    if ejemplos:
+        texto += f"\n\n¿Donde se ve esto en la practica? {ejemplos}"
+    return texto
+
+
+def texto_por_que_es_mejor(resultado):
+    """
+    Explica, usando los numeros REALES de este analisis (no en
+    abstracto), por que el circuito ganador se considera mejor que el
+    segundo mas cercano -- que tan grande es la diferencia de AIC entre
+    ambos, que tan fuerte es esa evidencia segun las reglas estandar de
+    interpretacion (Burnham & Anderson, 2002), y que dice el peso de
+    Akaike en terminos de porcentaje.
+
+    Si la diferencia de AIC es menor a 2 (el mismo umbral que usa
+    texto_empate), esta funcion devuelve cadena vacia -- ese caso ya lo
+    cubre el aviso de empate, y repetir la explicacion aqui seria
+    confuso (un mensaje diciendo "es mucho mejor" y otro diciendo "es
+    un empate" al mismo tiempo).
+
+    resultado: un app.domain.models.ResultadoAnalisis ya con
+    pesos_akaike calculado.
+    """
+    validos = resultado.validos
+    if len(validos) < 2:
+        return ""  # no hay con que comparar (o gano por default)
+
+    mejor, segundo = validos[0], validos[1]
+    delta_aic = segundo.aic - mejor.aic
+    umbral_empate_aic = 2
+    if delta_aic < umbral_empate_aic:
+        return ""
+
+    peso_por_nombre = dict(zip((r.nombre for r in validos), resultado.pesos_akaike))
+    peso_mejor = peso_por_nombre.get(mejor.nombre, 0)
+    peso_segundo = peso_por_nombre.get(segundo.nombre, 0)
+
+    # Umbrales de interpretacion de Burnham & Anderson (2002): que tan
+    # fuerte es la evidencia segun que tan grande es la diferencia de
+    # AIC. Son reglas de "dedo" ampliamente citadas en la literatura de
+    # seleccion de modelos, no un limite matematico exacto.
+    if delta_aic < 4:
+        fuerza = "evidencia moderada"
+        interpretacion = (
+            "hay una diferencia real entre los dos modelos, pero todavia "
+            "no es enorme"
+        )
+    elif delta_aic < 10:
+        fuerza = "evidencia considerable"
+        interpretacion = "el segundo modelo tiene bastante menos soporte que el ganador"
+    else:
+        fuerza = "evidencia muy fuerte"
+        interpretacion = (
+            f"el modelo {nombre_bonito(segundo.nombre)} practicamente se "
+            "puede descartar frente al ganador"
+        )
+
+    texto = (
+        f"¿Por que se eligio {nombre_bonito(mejor.nombre)} y no "
+        f"{nombre_bonito(segundo.nombre)} (el segundo mas cercano)? "
+        f"Su AIC ({mejor.aic:.1f}) es mas bajo que el del segundo "
+        f"({segundo.aic:.1f}) -- una diferencia (&Delta;AIC) de "
+        f"{delta_aic:.1f}. Segun las reglas usuales de interpretacion "
+        f"(Burnham &amp; Anderson, 2002), esto es {fuerza}: {interpretacion}. "
+        f"En terminos de probabilidad relativa (peso de Akaike), "
+        f"{nombre_bonito(mejor.nombre)} tiene un {peso_mejor*100:.1f}% "
+        f"contra solo {peso_segundo*100:.1f}% de {nombre_bonito(segundo.nombre)}."
+    )
+
+    # Chequeo de honestidad cientifica: BIC penaliza MAS fuerte que AIC
+    # a los modelos con mas parametros, asi que a veces no esta de
+    # acuerdo con AIC sobre cual es el mejor. Si eso pasa, se lo
+    # decimos al usuario en vez de ocultarlo -- es el mismo espiritu
+    # que el aviso de empate estadistico.
+    ordenados_por_bic = sorted(validos, key=lambda r: r.bic)
+    if ordenados_por_bic[0].nombre == mejor.nombre:
+        texto += (
+            " El criterio BIC (que penaliza mas fuerte los modelos con "
+            "mas parametros) coincide: tambien ubica a este circuito "
+            "como el mejor, lo que da mas confianza en la eleccion."
+        )
+    else:
+        texto += (
+            " <b>Aviso:</b> el criterio BIC (mas estricto con el numero "
+            f"de parametros) en realidad favorece a "
+            f"{nombre_bonito(ordenados_por_bic[0].nombre)} en vez de a "
+            f"{nombre_bonito(mejor.nombre)}. Esto puede pasar cuando el "
+            "modelo ganador usa parametros extra que ayudan un poco al "
+            "ajuste, pero no lo suficiente como para justificar esa "
+            "complejidad adicional segun un criterio mas estricto. Vale "
+            "la pena tener en cuenta ambos circuitos antes de concluir."
+        )
+
+    return texto
 
 
 def texto_empate(nombres_empatados, pesos):
@@ -287,6 +482,37 @@ porcentaje de probabilidad relativa. Si dos modelos tienen pesos
 parecidos (por ejemplo 55% y 40%), significa que los datos no alcanzan
 para distinguir con seguridad cual es el mejor -- es un "empate
 estadistico", y el programa te lo va a avisar cuando pase.</p>
+
+<h2>¿Que tan grande debe ser la diferencia de AIC para que importe?</h2>
+<p>No cualquier diferencia de AIC significa que un modelo es
+claramente mejor -- hace falta una regla para saber cuando la
+diferencia (llamada &Delta;AIC, "delta AIC") es lo bastante grande
+como para confiar en ella. Las reglas mas citadas en la literatura
+(Burnham &amp; Anderson, 2002) son:</p>
+<ul>
+<li><b>&Delta;AIC menor a 2:</b> los modelos son practicamente
+indistinguibles -- es un empate estadistico.</li>
+<li><b>&Delta;AIC entre 4 y 7:</b> evidencia considerable a favor del
+modelo con menor AIC; el otro modelo tiene bastante menos soporte.</li>
+<li><b>&Delta;AIC mayor a 10:</b> evidencia muy fuerte; el modelo con
+mayor AIC practicamente se puede descartar.</li>
+</ul>
+<p>Cuando el programa elige un "mejor circuito", usa exactamente estas
+reglas para explicarte que tan solida es esa eleccion -- no solo te
+dice CUAL circuito gano, sino QUE TAN CONVENCIDO deberias estar de esa
+eleccion.</p>
+
+<h2>¿Por que a veces AIC y BIC no estan de acuerdo?</h2>
+<p>BIC penaliza MAS fuerte que AIC a los modelos que usan mas
+parametros (la formula de BIC crece mas rapido con cada parametro
+extra cuando hay muchos datos). Esto significa que, en ocasiones,
+AIC puede favorecer un circuito con un parametro adicional (porque
+ese parametro ayudo un poco a explicar los datos), mientras que BIC
+prefiere el circuito mas simple (porque no considera que esa mejora
+compense la complejidad extra). Cuando esto pasa, el programa te lo
+avisa explicitamente en vez de ocultarlo -- ninguno de los dos
+criterios es "el correcto" de forma absoluta, asi que ver ambos te da
+una vision mas completa.</p>
 
 <h2>¿Que es la validacion de Kramers-Kronig?</h2>
 <p>Es una prueba matematica independiente de cualquier circuito: revisa

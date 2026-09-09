@@ -161,6 +161,10 @@ class VentanaPrincipal(QMainWindow):
                     ruta_imagen_grafica=ruta_imagen,
                     nombres_bonitos=textos_educativos.NOMBRES_BONITOS,
                     nombres_parametros_bonitos=textos_educativos.NOMBRES_PARAMETROS_BONITOS,
+                    ejemplos_sistemas=textos_educativos.EJEMPLOS_SISTEMAS,
+                    texto_comparacion_modelos=textos_educativos.texto_por_que_es_mejor(
+                        self.ultimo_resultado
+                    ),
                 )
         except Exception as e:
             QMessageBox.critical(

@@ -46,6 +46,16 @@ TOPOLOGIAS = {
         ("serie", "Rs"),
         ("paralelo", [["Rct", "Wo"], ["Q"]]),
     ],
+    "randles_warburg_semiinfinito": [
+        # Misma topologia visual que randles_warburg -- el dibujo (que
+        # esta en serie, que esta en paralelo) no distingue si el
+        # elemento Warburg es "Ws" (frontera cerrada) o "Wo" (frontera
+        # abierta); esa diferencia es matematica, no estructural, asi
+        # que se reutiliza la caja generica "Wo" (rotulada como "W" en
+        # ETIQUETAS_CAJA) para ambos.
+        ("serie", "Rs"),
+        ("paralelo", [["Rct", "Wo"], ["Q"]]),
+    ],
     "dos_constantes_tiempo": [
         ("serie", "Rs"),
         ("paralelo", [["R1"], ["Q1"]]),

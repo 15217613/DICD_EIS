@@ -12,6 +12,7 @@ puesto), esta prueba lo deberia detectar.
 import os
 
 from app.application import eis_service, analysis_service
+from app.domain.circuits import CIRCUITOS
 
 RUTA_EJEMPLO = os.path.join(
     os.path.dirname(__file__), "..", "..", "data", "examples", "datos_prueba.csv"
@@ -27,8 +28,11 @@ def test_flujo_completo_con_archivo_de_ejemplo():
         frecuencias, Z, callback=lambda msg, pct: mensajes_de_progreso.append(pct)
     )
 
-    # Se probaron los 4 circuitos de la biblioteca
-    assert len(resultado.resultados) == 4
+    # Se probaron TODOS los circuitos de la biblioteca -- se compara
+    # contra len(CIRCUITOS) en vez de un numero fijo (5) para que esta
+    # prueba no se vuelva a romper cada vez que se agregue un circuito
+    # nuevo a la biblioteca.
+    assert len(resultado.resultados) == len(CIRCUITOS)
 
     # El archivo de ejemplo es un Randles+CPE limpio (1% de ruido):
     # deberia pasar Kramers-Kronig sin problema.

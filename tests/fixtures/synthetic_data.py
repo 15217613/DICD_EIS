@@ -46,3 +46,43 @@ def generar_datos_randles_cpe(
     Z_ruidoso = Z_ruidoso[np.imag(Z_ruidoso) < 0]
 
     return frecuencias, Z_ruidoso, dict(zip(["Rs", "Rct", "Q", "n"], parametros))
+
+
+def generar_datos_randles_warburg_semiinfinito(
+    n_puntos=60,
+    ruido_relativo=0.01,
+    semilla=7,
+    # OJO con estos parametros "por defecto": se eligieron a proposito
+    # con Wo_mag (150) MENOR que Rct (500) -- confirmado con pruebas
+    # de robustez, el ajuste de este circuito se vuelve muy fragil
+    # cuando Wo_mag es comparable o mayor que Rct (ver la nota en
+    # domain/impedance.py::ajustar_circuito). Si cambias estos valores
+    # para otra prueba, evita esa combinacion o el ajuste puede fallar
+    # a converger sin que sea un bug del codigo.
+    parametros=(20.0, 500.0, 150.0, 8.0, 1e-5, 0.85),
+):
+    """
+    Genera datos sinteticos de un circuito Randles con Warburg
+    semi-infinito (R0-p(R1-Wo1,CPE1)).
+
+    Devuelve (frecuencias, Z, parametros_verdaderos).
+    """
+    rng = np.random.default_rng(semilla)
+    frecuencias = np.logspace(4, -2, n_puntos)
+
+    circuito = CustomCircuit(
+        circuit="R0-p(R1-Wo1,CPE1)", initial_guess=list(parametros)
+    )
+    circuito.parameters_ = list(parametros)
+    Z = circuito.predict(frecuencias)
+
+    ruido = ruido_relativo * np.abs(Z) * (
+        rng.standard_normal(len(Z)) + 1j * rng.standard_normal(len(Z))
+    )
+    Z_ruidoso = Z + ruido
+
+    frecuencias = frecuencias[np.imag(Z_ruidoso) < 0]
+    Z_ruidoso = Z_ruidoso[np.imag(Z_ruidoso) < 0]
+
+    nombres = ["Rs", "Rct", "Wo_mag", "Wo_tau", "Q", "n"]
+    return frecuencias, Z_ruidoso, dict(zip(nombres, parametros))
