@@ -31,9 +31,9 @@ class PanelResultados(QWidget):
         self.texto_resumen = QTextBrowser()
         self.texto_resumen.setMaximumHeight(160)
 
-        self.tabla_ranking = QTableWidget(0, 5)
+        self.tabla_ranking = QTableWidget(0, 6)
         self.tabla_ranking.setHorizontalHeaderLabels(
-            ["Circuito", "AIC", "BIC", "Peso de Akaike", "Estado"]
+            ["Circuito", "AIC", "BIC", "Peso de Akaike", "Estado", "Motivo"]
         )
         self.tabla_ranking.horizontalHeader().setSectionResizeMode(
             QHeaderView.ResizeToContents
@@ -92,7 +92,16 @@ class PanelResultados(QWidget):
                 QTableWidgetItem(bic_texto),
                 QTableWidgetItem(peso_texto),
                 QTableWidgetItem(estado_texto),
+                # El motivo ahora se muestra como texto DIRECTO en su
+                # propia columna, no solo escondido en un tooltip --
+                # antes era facil pasarlo por alto (un usuario reporto
+                # confusion real por esto: un circuito con AIC/BIC muy
+                # parecido a los validos, pero marcado "Descartado" sin
+                # que fuera obvio por que con solo ver la tabla).
+                QTableWidgetItem(r.motivo),
             ]
+            # El tooltip se conserva ademas del texto visible, por si
+            # la columna queda angosta y el texto se corta.
             items[-1].setToolTip(r.motivo)
             for col, item in enumerate(items):
                 item.setFlags(item.flags() & ~Qt.ItemIsEditable)

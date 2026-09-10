@@ -34,6 +34,22 @@ from matplotlib.patches import Rectangle
 #                                          elementos en serie DENTRO de
 #                                          esa rama
 TOPOLOGIAS = {
+    "resistencia_pura": [
+        ("serie", "R"),
+    ],
+    "capacitor_ideal": [
+        ("serie", "C"),
+    ],
+    "inductor_ideal": [
+        ("serie", "L"),
+    ],
+    "rc_serie": [
+        ("serie", "R"),
+        ("serie", "C"),
+    ],
+    "rc_paralelo": [
+        ("paralelo", [["R"], ["C"]]),
+    ],
     "randles_simple": [
         ("serie", "Rs"),
         ("paralelo", [["Rct"], ["Cdl"]]),
@@ -61,13 +77,22 @@ TOPOLOGIAS = {
         ("paralelo", [["R1"], ["Q1"]]),
         ("paralelo", [["R2"], ["Q2"]]),
     ],
+    "bucle_inductivo": [
+        ("serie", "Rs"),
+        # Tres ramas en paralelo -- _dibujar_paralelo ya soporta
+        # cualquier cantidad de ramas (no solo 2), asi que no hizo
+        # falta tocar el motor de dibujo, solo agregar esta entrada.
+        ("paralelo", [["Rct"], ["Q"], ["R3", "L1"]]),
+    ],
 }
 
 # Como se rotula cada elemento dentro de su caja del diagrama.
 ETIQUETAS_CAJA = {
+    "R": "R", "C": "C", "L": "L",
     "Rs": "Rs", "Rct": "Rct", "Cdl": "Cdl",
     "Q": "CPE", "Wo": "W",
     "R1": "R1", "Q1": "CPE1", "R2": "R2", "Q2": "CPE2",
+    "R3": "R3", "L1": "L1",
 }
 
 

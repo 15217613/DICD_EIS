@@ -24,41 +24,37 @@ def es_fisicamente_valido(nombre_circuito, circuit):
     valores = dict(zip(nombres_parametros, circuit.parameters_))
 
     for nombre, valor in valores.items():
-        # Ninguna resistencia (Rs, Rct, R1, R2) puede ser negativa o
-        # cero: una resistencia negativa no existe fisicamente.
         if nombre.startswith("R") and valor <= 0:
             return False, f"{nombre}={valor:.3g} es negativo o cero (no tiene sentido fisico)"
 
-        # El exponente "n" del CPE debe estar entre 0 y 1 por
-        # definicion matematica del elemento.
         if nombre.startswith("n") and not (0 < valor <= 1):
             return False, f"{nombre}={valor:.3g} fuera del rango valido (0, 1]"
 
-        # Q (el CPE) y los parametros de Warburg deben ser positivos.
         if nombre.startswith("Q") and valor <= 0:
             return False, f"{nombre}={valor:.3g} es negativo o cero"
         if nombre in ("Wo_mag", "Wo_tau") and valor <= 0:
             return False, f"{nombre}={valor:.3g} es negativo o cero"
 
-    # Si alguna resistencia queda muchisimo mas grande que las demas
-    # (varios ordenes de magnitud), suele ser senal de que el ajuste
-    # "se disparo" a una solucion sin sentido.
+        # Capacitancias (C, Cdl) e inductancias (L) tampoco tienen
+        # sentido si son negativas o cero -- este chequeo antes solo
+        # cubria R, Q y n; se agrega ahora que C y L pasan a ser
+        # parametros de primera clase (circuitos simples), pero de
+        # paso tambien corrige un vacio que ya existia: Cdl (en
+        # randles_simple) nunca se habia validado como positivo.
+        if nombre.startswith("C") and valor <= 0:
+            return False, f"{nombre}={valor:.3g} es negativo o cero"
+        if nombre.startswith("L") and valor <= 0:
+            return False, f"{nombre}={valor:.3g} es negativo o cero"
+
     resistencias = [v for k, v in valores.items() if k.startswith("R")]
     if len(resistencias) > 1 and max(resistencias) / min(resistencias) > 1e6:
         return False, "las resistencias difieren en mas de 6 ordenes de magnitud"
 
-    # Chequeo especial para dos_constantes_tiempo: si los dos "tiempos
-    # caracteristicos" quedan casi iguales, el circuito no representa
-    # dos procesos REALMENTE distintos -- es una solucion degenerada,
-    # probablemente imitando la forma de otro circuito (confirmado con
-    # pruebas de robustez: pasa justo donde se confunde con
-    # randles_warburg). tau = (R*Q)^(1/n) es la formula estandar del
-    # tiempo de relajacion de un elemento R-CPE en paralelo.
     if nombre_circuito == "dos_constantes_tiempo":
         tau1 = (valores["R1"] * valores["Q1"]) ** (1 / valores["n1"])
         tau2 = (valores["R2"] * valores["Q2"]) ** (1 / valores["n2"])
         razon = max(tau1, tau2) / max(min(tau1, tau2), 1e-30)
-        umbral_separacion = 3  # los tiempos deben diferir al menos 3x
+        umbral_separacion = 3
         if razon < umbral_separacion:
             return False, (
                 f"los dos tiempos caracteristicos son casi iguales "

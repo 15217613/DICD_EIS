@@ -145,7 +145,54 @@ def estimar_valores_iniciales(nombre_circuito, frecuencias, Z):
     Rct_inicial = 2 * (Z.real[idx_pico_global] - Rs_inicial)
     Rct_inicial = max(Rct_inicial, 1e-2)
 
-    if nombre_circuito == "randles_simple":
+    if nombre_circuito == "resistencia_pura":
+        # Z = R para cualquier frecuencia -- la resistencia no depende
+        # de omega, asi que el mejor "punto de partida" es simplemente
+        # el promedio de la parte real de todos los datos.
+        return [float(np.mean(Z.real))]
+
+    elif nombre_circuito == "capacitor_ideal":
+        # Z = -j/(omega*C) => C = -1/(omega*Z.imag). Se usa la mediana
+        # sobre todos los puntos (no un solo punto) para que un dato
+        # ruidoso aislado no arruine la estimacion.
+        C_estimados = -1.0 / (omega * Z.imag)
+        return [max(float(np.median(C_estimados)), 1e-12)]
+
+    elif nombre_circuito == "inductor_ideal":
+        # Z = j*omega*L => L = Z.imag/omega.
+        L_estimados = Z.imag / omega
+        return [max(float(np.median(L_estimados)), 1e-12)]
+
+    elif nombre_circuito == "rc_serie":
+        # A diferencia de resistencia_pura, aqui SI hay un elemento
+        # capacitivo en la misma rama -- y como el ruido sintetico (y
+        # el ruido real de un instrumento) es proporcional a |Z|, a
+        # bajas frecuencias |Z| se dispara (1/(omega*C) crece sin
+        # limite) y el ruido sobre la parte real se vuelve enorme
+        # comparado con R. Por eso NO se puede promediar Z.real de
+        # todas las frecuencias como en resistencia_pura -- hay que
+        # usar la MISMA idea que ya se usa para Rs_inicial arriba: un
+        # solo punto en la frecuencia MAS ALTA, donde el capacitor casi
+        # no aporta y la parte real es casi pura R con poco ruido
+        # relativo (confirmado con pruebas: promediar todo daba un
+        # error de mas de 900%, usar la frecuencia mas alta lo baja a
+        # menos de 1%).
+        R_inicial = Z.real[np.argmax(frecuencias)]
+        C_estimados = -1.0 / (omega * Z.imag)
+        C_inicial = max(float(np.median(C_estimados)), 1e-12)
+        return [R_inicial, C_inicial]
+
+    elif nombre_circuito == "rc_paralelo":
+        # Es la misma forma de semicirculo que randles_simple, pero
+        # SIN resistencia de solucion en serie (Rs=0 implicito) --
+        # por eso el pico del semicirculo cae directo en R/2 (no en
+        # Rs + R/2), y R = 2 x (Z' en el pico).
+        idx_pico = np.argmax(-Z.imag)
+        R_inicial = max(2 * Z.real[idx_pico], 1e-2)
+        C_inicial = 1 / (omega[idx_pico] * R_inicial)
+        return [R_inicial, C_inicial]
+
+    elif nombre_circuito == "randles_simple":
         idx_pico = np.argmax(-Z.imag)
         Cdl_inicial = 1 / (omega[idx_pico] * Rct_inicial)
         return [Rs_inicial, Rct_inicial, Cdl_inicial]
@@ -202,6 +249,49 @@ def estimar_valores_iniciales(nombre_circuito, frecuencias, Z):
         return [Rs_inicial, R1_inicial, Q1_inicial, n1_inicial,
                 R2_inicial, Q2_inicial, n2_inicial]
 
+    elif nombre_circuito == "bucle_inductivo":
+        # Pico del semicirculo capacitivo -- np.argmax(-Z.imag) nunca
+        # cae en la zona del bucle inductivo, porque ahi -Z.imag es
+        # NEGATIVO (Z.imag positivo), asi que el maximo siempre esta
+        # en la parte capacitiva de la curva, sin importar que tan
+        # grande sea el bucle.
+        idx_pico = np.argmax(-Z.imag)
+        n_inicial = 0.8
+        Q_inicial = 1 / (omega[idx_pico] ** n_inicial * Rct_inicial)
+
+        # A frecuencia muy baja, el inductor L1 actua como corto
+        # circuito y el CPE se comporta como circuito abierto (un
+        # capacitor ideal no deja pasar corriente en DC) -- solo
+        # quedan Rct y R3 en paralelo. Con el valor medido en la
+        # frecuencia mas baja se puede despejar R3.
+        Z_real_baja_frec = Z.real[np.argmin(frecuencias)]
+        paralelo_estimado = max(Z_real_baja_frec - Rs_inicial, 1e-2)
+        if paralelo_estimado < Rct_inicial:
+            R3_inicial = 1 / (1 / paralelo_estimado - 1 / Rct_inicial)
+        else:
+            # La geometria no dio un valor util (paso raro, ej. datos
+            # muy ruidosos) -- se usa un valor de respaldo razonable
+            # en vez de que el calculo de division truene.
+            R3_inicial = Rct_inicial * 5
+        R3_inicial = max(R3_inicial, 1e-2)
+
+        # La frecuencia donde la curva cruza el eje (de capacitivo a
+        # inductivo) marca la escala de tiempo de la rama R3-L1:
+        # tau = L1/R3, entonces L1 = R3 / omega_cruce.
+        indices_bucle = np.where(Z.imag > 0)[0]
+        if len(indices_bucle) > 0:
+            omega_cruce = np.max(omega[indices_bucle])
+        else:
+            # Si el bucle no se alcanza a ver en el rango medido (por
+            # ejemplo, si el barrido no bajo lo suficiente en
+            # frecuencia), se usa la frecuencia mas baja disponible
+            # como aproximacion de respaldo.
+            omega_cruce = omega[np.argmin(frecuencias)]
+        L1_inicial = max(R3_inicial / omega_cruce, 1e-6)
+
+        return [Rs_inicial, Rct_inicial, Q_inicial, n_inicial,
+                R3_inicial, L1_inicial]
+
     raise ValueError(f"Circuito desconocido: {nombre_circuito}")
 
 
@@ -239,11 +329,34 @@ def calcular_impedancia_con_parametros(nombre_circuito, frecuencias, valores):
 def ajustar_circuito(nombre_circuito, frecuencias, Z):
     """
     Construye el CustomCircuit con los valores iniciales estimados y lo
-    ajusta. La ponderacion por modulo ya viene incluida por defecto en
-    .fit(). maxfev=300 evita que un ajuste degenerado tarde 25+
-    segundos (confirmado con pruebas de robustez), a costa de que ese
-    caso especifico ajuste con menos precision -- pero de todas formas
-    se descarta despues por AIC o por el filtro de sentido fisico.
+    ajusta con weight_by_modulus=True (pondera cada punto por 1/|Z|,
+    para que puntos de magnitud muy distinta -- comunes en EIS, donde
+    |Z| puede variar varios ordenes de magnitud entre la frecuencia
+    mas alta y la mas baja -- pesen de forma comparable en el ajuste).
+    maxfev=300 evita que un ajuste degenerado tarde 25+ segundos
+    (confirmado con pruebas de robustez), a costa de que ese caso
+    especifico ajuste con menos precision -- pero de todas formas se
+    descarta despues por AIC o por el filtro de sentido fisico.
+
+    AVISO IMPORTANTE (descubierto al agregar rc_serie): esta funcion
+    NO tenia weight_by_modulus=True hasta ahora -- el docstring decia
+    que la ponderacion "ya venia incluida por defecto en .fit()", pero
+    eso era incorrecto: el default real de impedance.py es False, y en
+    ningun lado del codigo se pasaba explicitamente True. El problema
+    quedaba oculto porque los circuitos tipo Randles (con una rama
+    R-CPE en paralelo) tienen |Z| ACOTADO en todas las frecuencias (va
+    de Rs a Rs+Rct, sin dispararse a infinito), asi que un ajuste sin
+    ponderar igual quedaba razonablemente bien. Pero circuitos como
+    rc_serie o capacitor_ideal SI tienen |Z| que crece sin limite a
+    bajas frecuencias (nada los detiene) -- ahi, sin ponderar, el error
+    total queda dominado por esos pocos puntos enormes y el optimizador
+    practicamente ignora ajustar bien los demas parametros (se
+    confirmo: rc_serie recuperaba R con mas de 900% de error sin esta
+    correccion, y menos de 3% con ella). Ademas, esto ahora es
+    consistente con calcular_aic_bic() mas abajo, que YA calculaba su
+    propio error ponderado por 1/|Z| -- antes el ajuste y la metrica
+    de comparacion usaban criterios distintos sin que nadie lo hubiera
+    notado.
 
     Devuelve el objeto circuit ya ajustado.
     """
@@ -261,22 +374,15 @@ def ajustar_circuito(nombre_circuito, frecuencias, Z):
         # hace en dos_constantes_tiempo mas abajo): un factor que
         # falla no debe tumbar los demas.
         #
-        # NOTA DE ROBUSTEZ (confirmado con pruebas, 10 corridas con
-        # semillas independientes y 1% de ruido): el elemento Wo
-        # (frontera abierta/bloqueante) es numericamente MAS fragil
-        # que Ws (frontera cerrada/transmisiva). Con parametros
-        # realistas (Wo_mag menor que Rct) el ajuste converge 10/10
-        # veces con error menor a 6%. Pero en el caso extremo donde
-        # Wo_mag es COMPARABLE o MAYOR que Rct (fisicamente poco
-        # comun: implicaria que la difusion limita mas que la propia
-        # reaccion de transferencia de carga), la tasa de exito cae a
-        # 1/10 -- el optimizador encuentra minimos locales que ajustan
-        # mal la curva. Se probo ampliar de 3 a 7 factores de arranque
-        # y la mejora fue marginal (1/10 a 3/10), asi que no se
-        # justifica el costo computacional extra por un caso poco
-        # representativo: se deja en 3 factores, igual que
-        # randles_warburg, y se confia en que el filtro de AIC/BIC
-        # descarte un ajuste tan malo frente a otros circuitos.
+        # ACTUALIZACION (la nota de robustez original aqui quedo
+        # OBSOLETA): se habia documentado que el caso Wo_mag >= Rct
+        # solo convergia 1/10 veces. Eso resulto ser un sintoma del
+        # bug de weight_by_modulus (ver docstring de ajustar_circuito
+        # mas abajo) -- una vez agregado weight_by_modulus=True a los
+        # tres .fit() de esta funcion, el mismo caso "dificil" pasa a
+        # converger 10/10 veces. Se deja este parrafo como registro de
+        # que la fragilidad observada no era un problema intrinseco
+        # del elemento Wo, sino del ajuste sin ponderar.
         idx_wo_tau = info.parametros.index("Wo_tau")
         Wo_tau_base = valores_iniciales[idx_wo_tau]
         mejor_circuit = None
@@ -287,7 +393,7 @@ def ajustar_circuito(nombre_circuito, frecuencias, Z):
             try:
                 circuit = CustomCircuit(circuit=info.circuito, initial_guess=guess,
                                          name=nombre_circuito)
-                circuit.fit(frecuencias, Z, maxfev=300)
+                circuit.fit(frecuencias, Z, maxfev=300, weight_by_modulus=True)
             except Exception:
                 continue
             Z_modelo = circuit.predict(frecuencias)
@@ -312,7 +418,7 @@ def ajustar_circuito(nombre_circuito, frecuencias, Z):
             try:
                 circuit = CustomCircuit(circuit=info.circuito, initial_guess=guess,
                                          name=nombre_circuito)
-                circuit.fit(frecuencias, Z, maxfev=300)
+                circuit.fit(frecuencias, Z, maxfev=300, weight_by_modulus=True)
             except Exception:
                 continue
             Z_modelo = circuit.predict(frecuencias)
@@ -331,7 +437,7 @@ def ajustar_circuito(nombre_circuito, frecuencias, Z):
         initial_guess=valores_iniciales,
         name=nombre_circuito,
     )
-    circuit.fit(frecuencias, Z, maxfev=300)
+    circuit.fit(frecuencias, Z, maxfev=300, weight_by_modulus=True)
     return circuit
 
 

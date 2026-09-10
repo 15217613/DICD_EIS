@@ -120,10 +120,11 @@ def exportar_reporte_pdf(
             f"{r.bic:.2f}" if math.isfinite(r.bic) else "-",
             f"{peso*100:.1f}%" if peso is not None else "-",
             "Valido" if r.valido else "Descartado",
+            r.motivo,
         ])
     bloques.append({
         "tipo": "tabla",
-        "encabezados": ["Circuito", "AIC", "BIC", "Peso de Akaike", "Estado"],
+        "encabezados": ["Circuito", "AIC", "BIC", "Peso de Akaike", "Estado", "Motivo"],
         "filas": filas,
     })
     bloques.append({"tipo": "espacio", "alto_pt": 10})

@@ -13,6 +13,48 @@ riesgo de romper ningun calculo ni ningun boton de la ventana.
 # Descripcion de cada circuito de la biblioteca, en lenguaje sencillo.
 # ---------------------------------------------------------------------------
 DESCRIPCION_CIRCUITOS = {
+    "resistencia_pura": (
+        "Resistencia pura. El circuito mas simple posible: la "
+        "impedancia es un numero real fijo (R) que NO cambia con la "
+        "frecuencia. En la grafica de Nyquist se ve como un solo "
+        "punto sobre el eje horizontal, sin ninguna curva. Sirve como "
+        "punto de referencia para entender el resto de los circuitos: "
+        "todos los demas 'construyen' sobre esta idea basica."
+    ),
+    "capacitor_ideal": (
+        "Capacitor ideal. La impedancia depende completamente de la "
+        "frecuencia y es puramente imaginaria (no tiene parte real). "
+        "En la grafica de Nyquist se ve como una linea vertical recta "
+        "que sube conforme baja la frecuencia -- a diferencia de un "
+        "CPE, que es un capacitor 'imperfecto', este es el caso "
+        "matematicamente ideal."
+    ),
+    "inductor_ideal": (
+        "Inductor ideal. Tambien es puramente imaginario, pero con el "
+        "signo contrario al capacitor: en vez de subir conforme baja "
+        "la frecuencia, la impedancia sube conforme SUBE la "
+        "frecuencia. En la grafica de Nyquist aparece del lado "
+        "opuesto (por debajo del eje horizontal), en vez de por "
+        "encima como los elementos capacitivos."
+    ),
+    "rc_serie": (
+        "Resistencia y capacitor en serie. Combina los dos elementos "
+        "mas basicos uno despues del otro: en la grafica de Nyquist "
+        "se ve como una linea vertical (igual que el capacitor solo), "
+        "pero desplazada hacia la derecha una distancia igual a R. Es "
+        "el modelo tipico de un instrumento o cable con resistencia "
+        "propia conectado a un capacitor."
+    ),
+    "rc_paralelo": (
+        "Resistencia y capacitor en paralelo. A diferencia del caso en "
+        "serie, aqui la combinacion produce un semicirculo perfecto en "
+        "la grafica de Nyquist -- es la misma forma que "
+        "randles_simple, pero SIN una resistencia de solucion (Rs) en "
+        "serie antes del semicirculo. Es el circuito de Debye clasico, "
+        "usado como base teorica para explicar de donde sale la forma "
+        "de semicirculo que se repite en casi todos los demas "
+        "circuitos de la biblioteca."
+    ),
     "randles_simple": (
         "Circuito de Randles simple. Es el modelo mas basico: representa "
         "una resistencia de la solucion (Rs) en serie con un proceso de "
@@ -44,6 +86,18 @@ DESCRIPCION_CIRCUITOS = {
         "solucion, en vez de hacia una capa delgada con un borde "
         "definido)."
     ),
+    "bucle_inductivo": (
+        "Circuito con bucle inductivo. Agrega una tercera rama (R3 en "
+        "serie con L1) en paralelo con la transferencia de carga y el "
+        "CPE. Esta rama representa la relajacion de un intermediario "
+        "quimico ADSORBIDO en la superficie del electrodo -- un "
+        "compuesto que se forma y se consume durante la reaccion, y "
+        "cuya concentracion tarda un poco en 'ponerse al dia' con los "
+        "cambios de la senal aplicada. En la grafica de Nyquist, esto "
+        "se ve como un semicirculo capacitivo normal que, a bajas "
+        "frecuencias, se dobla hacia abajo formando un bucle -- algo "
+        "que NINGUN otro circuito de la biblioteca puede representar."
+    ),
     "dos_constantes_tiempo": (
         "Circuito con dos constantes de tiempo. Representa DOS procesos "
         "distintos ocurriendo a distinta velocidad (por ejemplo, una "
@@ -64,6 +118,45 @@ DESCRIPCION_CIRCUITOS = {
 # entiende PARA QUE sirve el modelo en un sistema real).
 # ---------------------------------------------------------------------------
 EJEMPLOS_SISTEMAS = {
+    "resistencia_pura": (
+        "En la practica es raro medir un sistema que sea PURAMENTE "
+        "esto -- se usa mas como resistencia de calibracion en "
+        "laboratorio (una resistencia patron para verificar que el "
+        "equipo de EIS este bien calibrado) o como aproximacion de la "
+        "resistencia de un cable o conector metalico simple."
+    ),
+    "capacitor_ideal": (
+        "Se usa como aproximacion de dielectricos casi perfectos: "
+        "capacitores ceramicos o de pelicula de buena calidad, o "
+        "membranas aislantes muy uniformes. En electroquimica real es "
+        "raro verlo puro -- casi siempre aparece como CPE, porque casi "
+        "ninguna superficie es perfectamente uniforme."
+    ),
+    "inductor_ideal": (
+        "Aparece por efectos del propio CABLEADO o instrumento de "
+        "medicion a frecuencias muy altas (inductancia parasita de los "
+        "cables), mas que por el sistema electroquimico en si. Tambien "
+        "se usa como bloque basico dentro de circuitos mas complejos "
+        "que si representan quimica real, como el de bucle inductivo "
+        "mencionado para corrosion con intermediarios adsorbidos."
+    ),
+    "rc_serie": (
+        "Modelo simplificado de un cable o electrodo con resistencia "
+        "propia conectado a un capacitor de medicion, o de un sistema "
+        "de dos terminales simple en un laboratorio de electronica "
+        "basica. Sirve mas como circuito de calibracion o ensenanza "
+        "que como modelo de un sistema electroquimico real."
+    ),
+    "rc_paralelo": (
+        "Es la base teorica de PRACTICAMENTE todos los sistemas "
+        "electroquimicos con un solo proceso: dielectricos con "
+        "perdidas, materiales con relajacion tipo Debye, y la version "
+        "'ideal' de lo que randles_simple representa con mas detalle "
+        "(agregandole la resistencia de la solucion). Si tus datos se "
+        "ven como un semicirculo que empieza justo en el origen (sin "
+        "desplazamiento), este circuito puede describirlos mejor que "
+        "randles_simple."
+    ),
     "randles_simple": (
         "Se ve en sistemas casi ideales, con superficies muy lisas y "
         "limpias: electrodos de metales nobles (oro, platino) en un "
@@ -105,6 +198,19 @@ EJEMPLOS_SISTEMAS = {
         "'choque' contra un limite dentro del rango de frecuencias "
         "medido."
     ),
+    "bucle_inductivo": (
+        "Es el circuito clasico para corrosion de aceros al carbono y "
+        "otros metales en medios ACIDOS, donde la reaccion pasa por "
+        "un intermediario adsorbido (por ejemplo, especies tipo "
+        "Fe(OH)ads en la disolucion de hierro). Tambien se reporta en "
+        "corrosion bajo deposito y en algunos recubrimientos "
+        "organicos danados donde hay una reaccion redox intermedia "
+        "activa bajo la pelicula. Si tu grafica de Nyquist muestra un "
+        "semicirculo que se 'dobla' hacia abajo del eje a bajas "
+        "frecuencias (en vez de simplemente cerrarse), es una senal "
+        "fuerte de que este circuito -- y no cualquier variante de "
+        "Randles -- es el que corresponde a tu sistema."
+    ),
     "dos_constantes_tiempo": (
         "Tipico de sistemas con DOS capas o interfaces distintas "
         "trabajando a velocidades diferentes: metal recubierto con "
@@ -118,14 +224,23 @@ EJEMPLOS_SISTEMAS = {
 }
 
 NOMBRES_BONITOS = {
+    "resistencia_pura": "Resistencia pura",
+    "capacitor_ideal": "Capacitor ideal",
+    "inductor_ideal": "Inductor ideal",
+    "rc_serie": "RC en serie",
+    "rc_paralelo": "RC en paralelo",
     "randles_simple": "Randles simple",
     "randles_cpe": "Randles con CPE",
     "randles_warburg": "Randles con Warburg (difusion)",
     "randles_warburg_semiinfinito": "Randles con Warburg semi-infinito",
     "dos_constantes_tiempo": "Dos constantes de tiempo",
+    "bucle_inductivo": "Con bucle inductivo (intermediario adsorbido)",
 }
 
 NOMBRES_PARAMETROS_BONITOS = {
+    "R": "Resistencia (R)",
+    "C": "Capacitancia (C)",
+    "L": "Inductancia (L)",
     "Rs": "Resistencia de la solucion (Rs)",
     "Rct": "Resistencia de transferencia de carga (Rct)",
     "Cdl": "Capacitancia de doble capa (Cdl)",
@@ -139,6 +254,8 @@ NOMBRES_PARAMETROS_BONITOS = {
     "R2": "Resistencia del proceso 2 (R2)",
     "Q2": "Magnitud del CPE del proceso 2 (Q2)",
     "n2": "Exponente del CPE del proceso 2 (n2)",
+    "R3": "Resistencia de la relajacion adsorbida (R3)",
+    "L1": "Inductancia de la relajacion adsorbida (L1)",
 }
 
 # ---------------------------------------------------------------------------
@@ -148,6 +265,32 @@ NOMBRES_PARAMETROS_BONITOS = {
 # son numeros arbitrarios.
 # ---------------------------------------------------------------------------
 REGLAS_PARAMETRO = {
+    "R": (
+        "Estimacion inicial: depende de la forma del circuito. Si R "
+        "es el UNICO elemento (resistencia pura), se usa el promedio "
+        "de la parte real de todos los puntos -- ahi no hay riesgo de "
+        "ruido amplificado, porque no hay ningun capacitor que dispare "
+        "el ruido a bajas frecuencias. Si R esta junto con un "
+        "capacitor en la misma rama (RC en serie), se usa un solo "
+        "punto en la frecuencia MAS ALTA (la misma idea que Rs), "
+        "porque ahi el capacitor casi no aporta y el ruido relativo es "
+        "mucho menor. Si R produce un semicirculo (RC en paralelo), se "
+        "usa la posicion del pico: R = 2 x (Z' en el pico) -- la misma "
+        "idea que se usa para Rct."
+    ),
+    "C": (
+        "Estimacion inicial: depende de la forma del circuito. Si C "
+        "es puramente imaginario (capacitor ideal, RC en serie), se "
+        "despeja C directamente de Z = -j/(omega x C) en cada punto, "
+        "usando la MEDIANA de esas estimaciones. Si C forma parte de "
+        "un semicirculo (RC en paralelo), se usa la condicion del pico "
+        "(omega x R x C = 1), la misma idea que se usa para Cdl."
+    ),
+    "L": (
+        "Estimacion inicial: se despeja L directamente de la formula "
+        "Z = j x omega x L en cada punto medido, y se usa la mediana "
+        "de esas estimaciones."
+    ),
     "Rs": (
         "Estimacion inicial: se toma la parte real de la impedancia en "
         "la frecuencia MAS ALTA medida. A esa velocidad los efectos "
@@ -194,6 +337,20 @@ REGLAS_PARAMETRO["R1"] = REGLAS_PARAMETRO["R2"] = REGLAS_PARAMETRO["Rct"].replac
 )
 REGLAS_PARAMETRO["Q1"] = REGLAS_PARAMETRO["Q2"] = REGLAS_PARAMETRO["Q"]
 REGLAS_PARAMETRO["n1"] = REGLAS_PARAMETRO["n2"] = REGLAS_PARAMETRO["n"]
+REGLAS_PARAMETRO["R3"] = (
+    "Estimacion inicial: a frecuencia muy baja, el inductor L1 se "
+    "comporta como un corto circuito y el CPE como un circuito "
+    "abierto -- solo quedan Rct y R3 en paralelo. Con el valor medido "
+    "en la frecuencia mas baja se despeja R3, conociendo ya el valor "
+    "estimado de Rct."
+)
+REGLAS_PARAMETRO["L1"] = (
+    "Estimacion inicial: se busca la frecuencia donde la curva cruza "
+    "el eje (donde termina el semicirculo capacitivo y empieza el "
+    "bucle inductivo) -- esa frecuencia marca la escala de tiempo de "
+    "la relajacion (tau = L1/R3), asi que L1 se despeja de ahi usando "
+    "el R3 ya estimado."
+)
 
 
 def texto_como_se_obtienen_parametros():

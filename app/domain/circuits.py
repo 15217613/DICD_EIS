@@ -15,6 +15,31 @@ tecnica/matematica de cada circuito.
 from app.domain.models import DefinicionCircuito
 
 CIRCUITOS = {
+    "resistencia_pura": DefinicionCircuito(
+        nombre="resistencia_pura",
+        circuito="R0",
+        parametros=["R"],
+    ),
+    "capacitor_ideal": DefinicionCircuito(
+        nombre="capacitor_ideal",
+        circuito="C0",
+        parametros=["C"],
+    ),
+    "inductor_ideal": DefinicionCircuito(
+        nombre="inductor_ideal",
+        circuito="L0",
+        parametros=["L"],
+    ),
+    "rc_serie": DefinicionCircuito(
+        nombre="rc_serie",
+        circuito="R0-C0",
+        parametros=["R", "C"],
+    ),
+    "rc_paralelo": DefinicionCircuito(
+        nombre="rc_paralelo",
+        circuito="p(R0,C0)",
+        parametros=["R", "C"],
+    ),
     "randles_simple": DefinicionCircuito(
         nombre="randles_simple",
         circuito="R0-p(R1,C1)",
@@ -48,6 +73,18 @@ CIRCUITOS = {
         circuito="R0-p(R1,CPE1)-p(R2,CPE2)",
         parametros=["Rs", "R1", "Q1", "n1", "R2", "Q2", "n2"],
     ),
+    "bucle_inductivo": DefinicionCircuito(
+        nombre="bucle_inductivo",
+        # Tres ramas en paralelo: Rct (transferencia de carga), CPE1
+        # (doble capa) y R3-L1 (relajacion de un intermediario
+        # adsorbido -- se comporta como una resistencia pura en DC,
+        # pero con un retraso dado por L1). Etiquetas "R3"/"L1" (no
+        # "R2"/"L2") a proposito, para no chocar con los nombres que
+        # ya usa dos_constantes_tiempo (R2 ahi significa algo
+        # distinto: la resistencia del SEGUNDO proceso capacitivo).
+        circuito="R0-p(R1,CPE1,R3-L1)",
+        parametros=["Rs", "Rct", "Q", "n", "R3", "L1"],
+    ),
 }
 
 # Formulas en HTML simple (no imagen, no LaTeX) -- se explico en una
@@ -55,6 +92,11 @@ CIRCUITOS = {
 # tiene un costo real, y aqui buscamos que cualquier parte de la
 # interfaz pueda mostrar la formula sin ese costo.
 FORMULAS_HTML = {
+    "resistencia_pura": "Z = R",
+    "capacitor_ideal": "Z(&omega;) = 1 &frasl; (j&omega;C)",
+    "inductor_ideal": "Z(&omega;) = j&omega;L",
+    "rc_serie": "Z(&omega;) = R + 1 &frasl; (j&omega;C)",
+    "rc_paralelo": "Z(&omega;) = R &frasl; (1 + j&omega;RC)",
     "randles_simple": (
         "Z(&omega;) = R<sub>s</sub> + "
         "R<sub>ct</sub> / (1 + j&omega;R<sub>ct</sub>C<sub>dl</sub>)"
@@ -75,5 +117,10 @@ FORMULAS_HTML = {
         "Z(&omega;) = R<sub>s</sub> + "
         "R<sub>1</sub>/(1+R<sub>1</sub>Q<sub>1</sub>(j&omega;)<sup>n1</sup>) + "
         "R<sub>2</sub>/(1+R<sub>2</sub>Q<sub>2</sub>(j&omega;)<sup>n2</sup>)"
+    ),
+    "bucle_inductivo": (
+        "Z(&omega;) = R<sub>s</sub> + "
+        "[1&frasl;R<sub>ct</sub> + 1&frasl;Z<sub>CPE</sub> + "
+        "1&frasl;(R<sub>3</sub>+j&omega;L<sub>1</sub>)]<sup>-1</sup>"
     ),
 }

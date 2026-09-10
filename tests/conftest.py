@@ -19,6 +19,7 @@ import pytest
 from tests.fixtures.synthetic_data import (
     generar_datos_randles_cpe,
     generar_datos_randles_warburg_semiinfinito,
+    generar_datos_bucle_inductivo,
 )
 
 
@@ -38,4 +39,13 @@ def datos_randles_warburg_semiinfinito():
     'facil' (Wo_mag menor que Rct) -- ver la nota de robustez en
     synthetic_data.py y en domain/impedance.py."""
     frecuencias, Z, parametros_verdaderos = generar_datos_randles_warburg_semiinfinito()
+    return frecuencias, Z, parametros_verdaderos
+
+
+@pytest.fixture
+def datos_bucle_inductivo():
+    """Datos sinteticos de un circuito con bucle inductivo (corrosion
+    con intermediario adsorbido). A diferencia de otros fixtures, aqui
+    los puntos con Im(Z) >= 0 NO se filtran -- son el bucle mismo."""
+    frecuencias, Z, parametros_verdaderos = generar_datos_bucle_inductivo()
     return frecuencias, Z, parametros_verdaderos

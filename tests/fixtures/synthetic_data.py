@@ -86,3 +86,40 @@ def generar_datos_randles_warburg_semiinfinito(
 
     nombres = ["Rs", "Rct", "Wo_mag", "Wo_tau", "Q", "n"]
     return frecuencias, Z_ruidoso, dict(zip(nombres, parametros))
+
+
+def generar_datos_bucle_inductivo(
+    n_puntos=60,
+    ruido_relativo=0.01,
+    semilla=3,
+    parametros=(20.0, 500.0, 1e-5, 0.85, 100.0, 5.0),
+):
+    """
+    Genera datos sinteticos de un circuito con bucle inductivo
+    (R0-p(R1,CPE1,R3-L1)) -- el modelo clasico de corrosion con un
+    intermediario adsorbido.
+
+    Devuelve (frecuencias, Z, parametros_verdaderos).
+    """
+    rng = np.random.default_rng(semilla)
+    frecuencias = np.logspace(4, -2, n_puntos)
+
+    circuito = CustomCircuit(
+        circuit="R0-p(R1,CPE1,R3-L1)", initial_guess=list(parametros)
+    )
+    circuito.parameters_ = list(parametros)
+    Z = circuito.predict(frecuencias)
+
+    ruido = ruido_relativo * np.abs(Z) * (
+        rng.standard_normal(len(Z)) + 1j * rng.standard_normal(len(Z))
+    )
+    Z_ruidoso = Z + ruido
+
+    # OJO: a diferencia de los demas generadores de este archivo, AQUI
+    # NO se descartan los puntos con Im(Z) >= 0 -- esos puntos son
+    # justamente el bucle inductivo que le da sentido al circuito. El
+    # filtro real (infrastructure/data_loader.py) tampoco los
+    # descartaria: solo recorta un tramo INICIAL de puntos inductivos
+    # (ruido cerca de la frecuencia mas alta), y aqui no hay ninguno.
+    nombres = ["Rs", "Rct", "Q", "n", "R3", "L1"]
+    return frecuencias, Z_ruidoso, dict(zip(nombres, parametros))
