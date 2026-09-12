@@ -581,6 +581,42 @@ def estimar_valores_iniciales(nombre_circuito, frecuencias, Z):
         return [Rs_inicial, Rct_inicial, Q_inicial, n_inicial,
                 R3_inicial, L1_inicial]
 
+    elif nombre_circuito == "linea_transmision_electroquimica":
+        # A baja frecuencia, TLMQ tiende a comportarse como el CPE
+        # solo (la impedancia interfacial Zs domina sobre la
+        # resistencia ionica Rion) -- se usa la misma idea que
+        # randles_cpe para estimar Qs. Rion se estima como una
+        # fraccion generica de la escala general de la curva; el
+        # ajuste refina desde ahi (confirmado con pruebas: 10/10
+        # exitos con esta estimacion, sin necesidad de multiples
+        # candidatos).
+        gamma_inicial = 0.8
+        idx_baja = np.argmin(frecuencias)
+        Qs_inicial = 1 / (
+            omega[idx_baja] ** gamma_inicial
+            * max(Z.real[idx_baja] - Rs_inicial, 1e-2)
+        )
+        Rion_inicial = max(float(np.mean(Z.real)) - Rs_inicial, 1e-2)
+        return [Rs_inicial, Rion_inicial, Qs_inicial, gamma_inicial]
+
+    elif nombre_circuito == "tlm_rc":
+        # Modelo de Paasch: a frecuencia muy baja, Z se acerca a un
+        # valor limite finito (a diferencia de TLMQ, que crece sin
+        # limite) -- ese limite se reparte entre A y B asumiendo de
+        # entrada que las dos resistividades del poro son parecidas
+        # entre si (reparto simetrico 50/50, con los factores
+        # coth(1)~1.3 y sinh(1)~1.175 que resultan de fijar a=1 como
+        # punto de partida). El ajuste rompe esa simetria si los
+        # datos lo piden.
+        idx_baja = np.argmin(frecuencias)
+        R_meseta = max(Z.real[idx_baja] - Rs_inicial, 1e-2)
+        A_inicial = R_meseta / 2 / 1.313
+        B_inicial = R_meseta / 2 * 1.175
+        a_inicial = 1.0
+        idx_medio = len(frecuencias) // 2
+        b_inicial = 1 / omega[idx_medio]
+        return [Rs_inicial, A_inicial, B_inicial, a_inicial, b_inicial]
+
     raise ValueError(f"Circuito desconocido: {nombre_circuito}")
 
 

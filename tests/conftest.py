@@ -25,6 +25,8 @@ from tests.fixtures.synthetic_data import (
     generar_datos_pelicula_transf_difusion,
     generar_datos_dos_tiempos_cpe,
     generar_datos_tres_constantes_tiempo,
+    generar_datos_tlm_rc,
+    generar_datos_linea_transmision_electroquimica,
 )
 
 
@@ -134,5 +136,21 @@ def datos_tres_constantes_tiempo_ruido_realista():
     este circuito es fragil a este nivel de ruido."""
     frecuencias, Z, parametros_verdaderos = generar_datos_tres_constantes_tiempo(
         ruido_relativo=0.01
+    )
+    return frecuencias, Z, parametros_verdaderos
+
+
+@pytest.fixture
+def datos_tlm_rc():
+    """Linea de transmision RC (modelo de Paasch)."""
+    frecuencias, Z, parametros_verdaderos = generar_datos_tlm_rc()
+    return frecuencias, Z, parametros_verdaderos
+
+
+@pytest.fixture
+def datos_linea_transmision_electroquimica():
+    """Linea de transmision electroquimica (modelo de Landesfeind)."""
+    frecuencias, Z, parametros_verdaderos = (
+        generar_datos_linea_transmision_electroquimica()
     )
     return frecuencias, Z, parametros_verdaderos

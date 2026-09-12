@@ -54,6 +54,8 @@ def test_numero_de_parametros_coincide_con_el_string_del_circuito():
         "pelicula_transf_difusion": 6,  # Rs, Rpo, Ccoat, Rct, Aw, Cdl
         "dos_constantes_tiempo_rc": 5,  # Rs, R1, C1, R2, C2
         "tres_constantes_tiempo": 10,  # Rs, R1,Q1,n1, R2,Q2,n2, R3,Q3,n3
+        "tlm_rc": 5,  # Rs, A, B, a, b
+        "linea_transmision_electroquimica": 4,  # Rs, Rion, Qs, gamma
     }
     for nombre, cantidad in conteo_esperado.items():
         assert len(CIRCUITOS[nombre].parametros) == cantidad

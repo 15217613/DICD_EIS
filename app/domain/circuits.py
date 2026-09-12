@@ -106,6 +106,31 @@ CIRCUITOS = {
         circuito="R0-p(R1,CPE1)-p(R2,CPE2)-p(R3,CPE3)",
         parametros=["Rs", "R1", "Q1", "n1", "R2", "Q2", "n2", "R3", "Q3", "n3"],
     ),
+    "tlm_rc": DefinicionCircuito(
+        nombre="tlm_rc",
+        # Modelo general de electrodo poroso macrohomogeneo (Paasch,
+        # Micka y Gersdorf, 1993) -- una linea de transmision "clasica"
+        # donde A y B combinan las resistividades del poro y de la
+        # matriz solida, y (a,b) son los parametros cineticos/de tiempo
+        # de la reaccion dentro del poro. Se usa el elemento "T" que ya
+        # trae impedance.py, en vez de armar la linea de transmision a
+        # mano con docenas de R y C en escalera.
+        circuito="R0-T0",
+        parametros=["Rs", "A", "B", "a", "b"],
+    ),
+    "linea_transmision_electroquimica": DefinicionCircuito(
+        nombre="linea_transmision_electroquimica",
+        # Modelo de linea de transmision SIMPLIFICADO (Landesfeind et
+        # al., 2016), pensado especificamente para electrodos porosos
+        # de baterias: Rion es la resistencia ionica dentro del poro, y
+        # Zs (Qs, gamma) es la impedancia interfacial en cada punto del
+        # poro, modelada como un CPE. Mas facil de interpretar que "T"
+        # porque sus parametros ya tienen nombres electroquimicos
+        # directos (resistencia ionica + CPE), en vez de combinaciones
+        # abstractas de resistividades.
+        circuito="R0-TLMQ0",
+        parametros=["Rs", "Rion", "Qs", "gamma"],
+    ),
     "bucle_inductivo": DefinicionCircuito(
         nombre="bucle_inductivo",
         # Tres ramas en paralelo: Rct (transferencia de carga), CPE1
@@ -260,5 +285,13 @@ FORMULAS_HTML = {
         "R<sub>1</sub>/(1+R<sub>1</sub>Q<sub>1</sub>(j&omega;)<sup>n1</sup>) + "
         "R<sub>2</sub>/(1+R<sub>2</sub>Q<sub>2</sub>(j&omega;)<sup>n2</sup>) + "
         "R<sub>3</sub>/(1+R<sub>3</sub>Q<sub>3</sub>(j&omega;)<sup>n3</sup>)"
+    ),
+    "tlm_rc": (
+        "Z(&omega;) = R<sub>s</sub> + A&middot;coth(&beta;)/&beta; + "
+        "B/(&beta;&middot;sinh(&beta;)), &nbsp; &beta;=(a+j&omega;b)<sup>1/2</sup>"
+    ),
+    "linea_transmision_electroquimica": (
+        "Z(&omega;) = R<sub>s</sub> + "
+        "&radic;(R<sub>ion</sub>Z<sub>s</sub>)&middot;coth&radic;(R<sub>ion</sub>/Z<sub>s</sub>)"
     ),
 }

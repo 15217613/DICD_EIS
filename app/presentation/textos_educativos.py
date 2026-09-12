@@ -164,6 +164,29 @@ DESCRIPCION_CIRCUITOS = {
         "dos capas mas la corrosion del metal debajo). Es el circuito "
         "mas complejo de toda la biblioteca."
     ),
+    "tlm_rc": (
+        "Linea de transmision de electrodo poroso (modelo de Paasch, "
+        "Micka y Gersdorf, 1993). A diferencia de todos los demas "
+        "circuitos de la biblioteca (que son combinaciones de "
+        "elementos discretos: R, C, CPE), este representa un electrodo "
+        "con estructura de PORO continua -- imaginalo como una "
+        "'escalera' infinita de resistencias y capacitores repartidos "
+        "a lo largo de la profundidad del poro, en vez de un solo "
+        "valor de R y C. A y B combinan las resistividades del "
+        "electrolito dentro del poro y del material solido del "
+        "electrodo; a y b son parametros cineticos y de tiempo de la "
+        "reaccion que ocurre en las paredes del poro."
+    ),
+    "linea_transmision_electroquimica": (
+        "Version simplificada de linea de transmision (Landesfeind et "
+        "al., 2016), pensada especificamente para electrodos porosos "
+        "de baterias de ion-litio. Es igual en espiritu a tlm_rc, pero "
+        "con parametros mas directos de interpretar: Rion es la "
+        "resistencia del electrolito DENTRO del poro (distinta de Rs, "
+        "que es la resistencia de la solucion FUERA del electrodo), y "
+        "Qs/gamma describen la impedancia de la reaccion en la "
+        "superficie del poro como un CPE."
+    ),
     "bucle_inductivo": (
         "Circuito con bucle inductivo. Agrega una tercera rama (R3 en "
         "serie con L1) en paralelo con la transferencia de carga y el "
@@ -354,6 +377,24 @@ EJEMPLOS_SISTEMAS = {
         "haber un tercero, porque los datos rara vez alcanzan a "
         "distinguir los tres con confianza."
     ),
+    "tlm_rc": (
+        "Electrodos de bateria de alta area superficial (carbon "
+        "activado, grafito poroso), electrodos de supercapacitores, y "
+        "en general cualquier electrodo con estructura porosa "
+        "profunda donde la corriente tiene que 'viajar' a traves del "
+        "poro antes de reaccionar -- a diferencia de un electrodo "
+        "plano, donde toda la superficie reacciona practicamente al "
+        "mismo tiempo."
+    ),
+    "linea_transmision_electroquimica": (
+        "El caso especifico mas reportado en la literatura reciente: "
+        "electrodos porosos de baterias de ion-litio (grafito, "
+        "materiales de catodo con estructura porosa), donde se "
+        "necesita separar la resistencia ionica dentro del poro de la "
+        "resistencia de la solucion externa (Rs) para entender que "
+        "tanto limita el desempeño de la bateria el diseño del "
+        "electrodo mismo, en vez del electrolito."
+    ),
     "dos_constantes_tiempo": (
         "Tipico de sistemas con DOS capas o interfaces distintas "
         "trabajando a velocidades diferentes: metal recubierto con "
@@ -386,6 +427,8 @@ NOMBRES_BONITOS = {
     "pelicula_transf_difusion": "Pelicula + transferencia + difusion",
     "dos_constantes_tiempo_rc": "Dos constantes de tiempo RC",
     "tres_constantes_tiempo": "Tres constantes de tiempo",
+    "tlm_rc": "Linea de transmision RC (TLM)",
+    "linea_transmision_electroquimica": "Linea de transmision electroquimica",
 }
 
 NOMBRES_PARAMETROS_BONITOS = {
@@ -408,6 +451,13 @@ NOMBRES_PARAMETROS_BONITOS = {
     "R3": "Resistencia del proceso 3 (R3)",
     "Q3": "Magnitud del CPE del proceso 3 (Q3)",
     "n3": "Exponente del CPE del proceso 3 (n3)",
+    "A": "Resistividad combinada A (poro+matriz)",
+    "B": "Resistividad combinada B (poro+matriz)",
+    "a": "Parametro cinetico de la reaccion (a)",
+    "b": "Constante de tiempo de la linea (b)",
+    "Rion": "Resistencia ionica en el poro (Rion)",
+    "Qs": "Magnitud del CPE interfacial (Qs)",
+    "gamma": "Exponente del CPE interfacial (gamma)",
     "Rad": "Resistencia de la relajacion adsorbida (Rad)",
     "Lad": "Inductancia de la relajacion adsorbida (Lad)",
     "Aw": "Coeficiente de Warburg (Aw)",
@@ -501,6 +551,39 @@ REGLAS_PARAMETRO["R1"] = REGLAS_PARAMETRO["R2"] = REGLAS_PARAMETRO["Rct"].replac
 REGLAS_PARAMETRO["Q1"] = REGLAS_PARAMETRO["Q2"] = REGLAS_PARAMETRO["Q"]
 REGLAS_PARAMETRO["n1"] = REGLAS_PARAMETRO["n2"] = REGLAS_PARAMETRO["n"]
 REGLAS_PARAMETRO["R3"] = REGLAS_PARAMETRO["Rct"].replace("Rct", "R3")
+REGLAS_PARAMETRO["A"] = (
+    "Estimacion inicial: se toma el valor limite de la curva a "
+    "frecuencia muy baja (menos Rs) y se reparte a la mitad entre A "
+    "y B, asumiendo de entrada que las dos resistividades del poro "
+    "son parecidas -- el ajuste rompe esa simetria si los datos lo "
+    "piden."
+)
+REGLAS_PARAMETRO["B"] = REGLAS_PARAMETRO["A"]
+REGLAS_PARAMETRO["a"] = (
+    "Se arranca con a=1 (un valor de orden 1, tipico punto de "
+    "partida para este parametro adimensional) como punto de "
+    "partida para el optimizador."
+)
+REGLAS_PARAMETRO["b"] = (
+    "Estimacion inicial: se usa el inverso de una frecuencia "
+    "intermedia del rango medido, como escala de tiempo de partida."
+)
+REGLAS_PARAMETRO["Rion"] = (
+    "Estimacion inicial: se usa una fraccion generica de la escala "
+    "general de la curva (el promedio de la parte real menos Rs) -- "
+    "a diferencia de Rct en un semicirculo, este circuito no tiene "
+    "un pico claro del que despejar Rion directamente."
+)
+REGLAS_PARAMETRO["Qs"] = (
+    "Estimacion inicial: a frecuencia muy baja, este circuito se "
+    "comporta casi como un CPE solo (la impedancia interfacial "
+    "domina sobre la resistencia ionica) -- se despeja Qs de ahi, "
+    "igual que se hace con Q en randles_cpe."
+)
+REGLAS_PARAMETRO["gamma"] = (
+    "Se arranca con gamma=0.8 (tipico de superficies rugosas o "
+    "porosas), la misma idea que el exponente n de un CPE normal."
+)
 REGLAS_PARAMETRO["Q3"] = REGLAS_PARAMETRO["Q"]
 REGLAS_PARAMETRO["n3"] = REGLAS_PARAMETRO["n"]
 REGLAS_PARAMETRO["Rad"] = (

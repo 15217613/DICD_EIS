@@ -44,6 +44,20 @@ def es_fisicamente_valido(nombre_circuito, circuit):
         if nombre.startswith("n") and not (0 < valor <= 1):
             return False, f"{nombre}={valor:.3g} fuera del rango valido (0, 1]"
 
+        # "gamma" (en linea_transmision_electroquimica) es el mismo
+        # tipo de exponente fraccionario que "n" en un CPE -- mismo
+        # rango valido, distinto nombre por venir de otra convencion
+        # de notacion (Landesfeind et al., 2016).
+        if nombre == "gamma" and not (0 < valor <= 1):
+            return False, f"{nombre}={valor:.3g} fuera del rango valido (0, 1]"
+
+        # A, B (tlm_rc) son resistividades combinadas -- deben ser
+        # positivas por la misma razon que cualquier resistencia.
+        # a, b (tlm_rc) son parametros cineticos/de tiempo que
+        # tampoco tienen sentido si son negativos o cero.
+        if nombre in ("A", "B", "a", "b") and valor <= 0:
+            return False, f"{nombre}={valor:.3g} es negativo o cero"
+
         if nombre.startswith("Q") and valor <= 0:
             return False, f"{nombre}={valor:.3g} es negativo o cero"
         if nombre in ("Wo_mag", "Wo_tau") and valor <= 0:

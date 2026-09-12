@@ -83,6 +83,19 @@ TOPOLOGIAS = {
         ("paralelo", [["R2"], ["Q2"]]),
         ("paralelo", [["R3"], ["Q3"]]),
     ],
+    "tlm_rc": [
+        # La linea de transmision es una estructura continua ("escalera"
+        # infinita de R y C repartidos en el poro), no una combinacion
+        # de R/C discretos como el resto de la biblioteca -- se dibuja
+        # como UNA sola caja generica en vez de intentar representar la
+        # estructura distribuida completa.
+        ("serie", "Rs"),
+        ("serie", "TLM"),
+    ],
+    "linea_transmision_electroquimica": [
+        ("serie", "Rs"),
+        ("serie", "TLMQ"),
+    ],
     "bucle_inductivo": [
         ("serie", "Rs"),
         # Tres ramas en paralelo -- _dibujar_paralelo ya soporta
@@ -131,6 +144,7 @@ ETIQUETAS_CAJA = {
     "Q": "CPE", "Wo": "W", "Aw": "W",
     "R1": "R1", "Q1": "CPE1", "R2": "R2", "Q2": "CPE2",
     "R3": "R3", "Q3": "CPE3",
+    "TLM": "TLM", "TLMQ": "TLM-Q",
     "Rad": "Rad", "Lad": "Lad",
     "Rpo": "Rpo", "Ccoat": "Ccoat", "Qcoat": "CPEcoat",
     "Qdl": "CPEdl", "C1": "C1", "C2": "C2",

@@ -276,3 +276,53 @@ def generar_datos_tres_constantes_tiempo(
     Z_ruidoso = Z_ruidoso[np.imag(Z_ruidoso) < 0]
     nombres = ["Rs", "R1", "Q1", "n1", "R2", "Q2", "n2", "R3", "Q3", "n3"]
     return frecuencias, Z_ruidoso, dict(zip(nombres, parametros))
+
+
+def generar_datos_tlm_rc(
+    n_puntos=50,
+    ruido_relativo=0.01,
+    semilla=1,
+    f_max=5,
+    f_min=-3,
+    parametros=(20.0, 500.0, 500.0, 1.0, 0.05),
+):
+    """Linea de transmision RC (modelo de Paasch, T0): Rs + T0.
+    Devuelve (frecuencias, Z, parametros_verdaderos)."""
+    rng = np.random.default_rng(semilla)
+    frecuencias = np.logspace(f_max, f_min, n_puntos)
+    circuito = CustomCircuit(circuit="R0-T0", initial_guess=list(parametros))
+    circuito.parameters_ = list(parametros)
+    Z = circuito.predict(frecuencias)
+    ruido = ruido_relativo * np.abs(Z) * (
+        rng.standard_normal(len(Z)) + 1j * rng.standard_normal(len(Z))
+    )
+    Z_ruidoso = Z + ruido
+    frecuencias = frecuencias[np.imag(Z_ruidoso) < 0]
+    Z_ruidoso = Z_ruidoso[np.imag(Z_ruidoso) < 0]
+    nombres = ["Rs", "A", "B", "a", "b"]
+    return frecuencias, Z_ruidoso, dict(zip(nombres, parametros))
+
+
+def generar_datos_linea_transmision_electroquimica(
+    n_puntos=50,
+    ruido_relativo=0.01,
+    semilla=1,
+    f_max=5,
+    f_min=-3,
+    parametros=(20.0, 2000.0, 1e-4, 0.9),
+):
+    """Linea de transmision electroquimica (TLMQ0): Rs + TLMQ0.
+    Devuelve (frecuencias, Z, parametros_verdaderos)."""
+    rng = np.random.default_rng(semilla)
+    frecuencias = np.logspace(f_max, f_min, n_puntos)
+    circuito = CustomCircuit(circuit="R0-TLMQ0", initial_guess=list(parametros))
+    circuito.parameters_ = list(parametros)
+    Z = circuito.predict(frecuencias)
+    ruido = ruido_relativo * np.abs(Z) * (
+        rng.standard_normal(len(Z)) + 1j * rng.standard_normal(len(Z))
+    )
+    Z_ruidoso = Z + ruido
+    frecuencias = frecuencias[np.imag(Z_ruidoso) < 0]
+    Z_ruidoso = Z_ruidoso[np.imag(Z_ruidoso) < 0]
+    nombres = ["Rs", "Rion", "Qs", "gamma"]
+    return frecuencias, Z_ruidoso, dict(zip(nombres, parametros))
