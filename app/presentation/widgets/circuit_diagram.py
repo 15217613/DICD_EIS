@@ -77,12 +77,50 @@ TOPOLOGIAS = {
         ("paralelo", [["R1"], ["Q1"]]),
         ("paralelo", [["R2"], ["Q2"]]),
     ],
+    "tres_constantes_tiempo": [
+        ("serie", "Rs"),
+        ("paralelo", [["R1"], ["Q1"]]),
+        ("paralelo", [["R2"], ["Q2"]]),
+        ("paralelo", [["R3"], ["Q3"]]),
+    ],
     "bucle_inductivo": [
         ("serie", "Rs"),
         # Tres ramas en paralelo -- _dibujar_paralelo ya soporta
         # cualquier cantidad de ramas (no solo 2), asi que no hizo
         # falta tocar el motor de dibujo, solo agregar esta entrada.
-        ("paralelo", [["Rct"], ["Q"], ["R3", "L1"]]),
+        ("paralelo", [["Rct"], ["Q"], ["Rad", "Lad"]]),
+    ],
+    "randles_cpe_warburg": [
+        ("serie", "Rs"),
+        ("paralelo", [["Rct", "Aw"], ["Q"]]),
+    ],
+    "pelicula_rc": [
+        ("serie", "Rs"),
+        ("paralelo", [["Rpo"], ["Ccoat"]]),
+    ],
+    "pelicula_cpe": [
+        ("serie", "Rs"),
+        ("paralelo", [["Rpo"], ["Qcoat"]]),
+    ],
+    "pelicula_transferencia_carga": [
+        ("serie", "Rs"),
+        ("paralelo", [["Rpo"], ["Ccoat"]]),
+        ("paralelo", [["Rct"], ["Cdl"]]),
+    ],
+    "pelicula_cpe_transferencia": [
+        ("serie", "Rs"),
+        ("paralelo", [["Rpo"], ["Qcoat"]]),
+        ("paralelo", [["Rct"], ["Qdl"]]),
+    ],
+    "pelicula_transf_difusion": [
+        ("serie", "Rs"),
+        ("paralelo", [["Rpo"], ["Ccoat"]]),
+        ("paralelo", [["Rct", "Aw"], ["Cdl"]]),
+    ],
+    "dos_constantes_tiempo_rc": [
+        ("serie", "Rs"),
+        ("paralelo", [["R1"], ["C1"]]),
+        ("paralelo", [["R2"], ["C2"]]),
     ],
 }
 
@@ -90,9 +128,12 @@ TOPOLOGIAS = {
 ETIQUETAS_CAJA = {
     "R": "R", "C": "C", "L": "L",
     "Rs": "Rs", "Rct": "Rct", "Cdl": "Cdl",
-    "Q": "CPE", "Wo": "W",
+    "Q": "CPE", "Wo": "W", "Aw": "W",
     "R1": "R1", "Q1": "CPE1", "R2": "R2", "Q2": "CPE2",
-    "R3": "R3", "L1": "L1",
+    "R3": "R3", "Q3": "CPE3",
+    "Rad": "Rad", "Lad": "Lad",
+    "Rpo": "Rpo", "Ccoat": "Ccoat", "Qcoat": "CPEcoat",
+    "Qdl": "CPEdl", "C1": "C1", "C2": "C2",
 }
 
 

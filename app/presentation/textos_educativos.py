@@ -86,6 +86,84 @@ DESCRIPCION_CIRCUITOS = {
         "solucion, en vez de hacia una capa delgada con un borde "
         "definido)."
     ),
+    "randles_cpe_warburg": (
+        "Circuito de Randles con Warburg semi-infinito CLASICO (un "
+        "solo parametro, Aw). Es el modelo de libro de texto: a "
+        "diferencia de los otros dos circuitos con Warburg de esta "
+        "biblioteca (que asumen una capa de difusion de espesor "
+        "FINITO y eventualmente se 'doblan' de vuelta en la grafica "
+        "de Nyquist), este da una linea recta a 45 grados que nunca "
+        "se dobla, sin importar que tan bajo sea el rango de "
+        "frecuencias medido."
+    ),
+    "pelicula_rc": (
+        "Circuito de una capa/recubrimiento con capacitor ideal. "
+        "Representa un recubrimiento (pintura, capa protectora) con "
+        "poros o defectos por donde el electrolito ya penetro: Rpo es "
+        "la resistencia de ese camino ionico a traves de los poros, y "
+        "Ccoat es la capacitancia del recubrimiento mismo. "
+        "Matematicamente es identico a randles_simple -- lo que "
+        "cambia es que aqui NO hay ninguna reaccion de corrosion "
+        "ocurriendo todavia, solo el recubrimiento."
+    ),
+    "pelicula_cpe": (
+        "Igual que pelicula_rc, pero con CPE en vez de capacitor "
+        "ideal -- mas realista para recubrimientos con superficie no "
+        "perfectamente uniforme. Matematicamente identico a "
+        "randles_cpe."
+    ),
+    "pelicula_transferencia_carga": (
+        "Dos procesos en serie, AMBOS con capacitor ideal: el "
+        "recubrimiento (Rpo, Ccoat) y, debajo, la transferencia de "
+        "carga en el metal donde el recubrimiento ya fallo (Rct, "
+        "Cdl). Se usa cuando el recubrimiento ya no protege del todo "
+        "y hay corrosion activa empezando en el metal base."
+    ),
+    "pelicula_cpe_transferencia": (
+        "Igual que pelicula_transferencia_carga, pero con CPE en "
+        "ambas capas en vez de capacitores ideales -- mas realista "
+        "cuando ni el recubrimiento ni la superficie del metal son "
+        "perfectamente uniformes. Matematicamente identico a "
+        "dos_constantes_tiempo."
+    ),
+    "pelicula_transf_difusion": (
+        "El modelo mas completo de recubrimientos de la biblioteca: "
+        "capa (Rpo, Ccoat) en serie con transferencia de carga MAS "
+        "difusion (Rct, Aw, Cdl). Se usa cuando, ademas de que el "
+        "recubrimiento fallo y hay corrosion activa, el transporte de "
+        "alguna especie quimica (por ejemplo, oxigeno disuelto "
+        "llegando al metal a traves del defecto) tambien limita el "
+        "proceso."
+    ),
+    "dos_constantes_tiempo_rc": (
+        "Version con capacitores IDEALES de dos_constantes_tiempo: "
+        "dos procesos en serie, cada uno con su propia resistencia y "
+        "capacitor (sin CPE). Util para sistemas de dos capas donde "
+        "ambas superficies son razonablemente uniformes -- si "
+        "sospechas rugosidad o porosidad importante en alguna de las "
+        "dos, dos_constantes_tiempo (con CPE) suele describir mejor "
+        "los datos."
+    ),
+    "tres_constantes_tiempo": (
+        "<b style='color:#c1121f;'>⚠️ ADVERTENCIA: este modelo es "
+        "MAS sensible al ruido que dos_constantes_tiempo.</b> Se "
+        "confirmo con pruebas que, incluso con ruido bajo, es facil "
+        "que el ajuste confunda dos de los tres procesos entre si -- "
+        "sobre todo si las TRES resistencias no son de un orden de "
+        "magnitud parecido: si un proceso domina mucho sobre los "
+        "otros dos (por ejemplo, una resistencia 10 veces mayor que "
+        "las demas), su semicirculo 'esconde' visualmente a los mas "
+        "chicos, y el programa puede no lograr distinguirlos del todo, "
+        "sin importar que tan bien separadas esten sus frecuencias. "
+        "<b>Revisa siempre la columna 'Motivo' de la tabla de "
+        "resultados antes de confiar en un ajuste de este circuito.</b>"
+        "<br><br>"
+        "Dicho esto: cuando los tres procesos SI tienen magnitudes "
+        "comparables, representa tres procesos distintos ocurriendo a "
+        "tres velocidades diferentes (por ejemplo, un recubrimiento de "
+        "dos capas mas la corrosion del metal debajo). Es el circuito "
+        "mas complejo de toda la biblioteca."
+    ),
     "bucle_inductivo": (
         "Circuito con bucle inductivo. Agrega una tercera rama (R3 en "
         "serie con L1) en paralelo con la transferencia de carga y el "
@@ -211,6 +289,71 @@ EJEMPLOS_SISTEMAS = {
         "fuerte de que este circuito -- y no cualquier variante de "
         "Randles -- es el que corresponde a tu sistema."
     ),
+    "randles_cpe_warburg": (
+        "Es el modelo de Warburg mas usado en la ensenanza de EIS, y "
+        "aparece en sistemas donde la difusion domina claramente el "
+        "comportamiento a bajas frecuencias sin que se note ningun "
+        "'techo' dentro del rango medido: baterias durante buena "
+        "parte de su ciclo de carga/descarga, electrodos rotatorios "
+        "en electroquimica analitica, y sistemas de referencia usados "
+        "para ensenar el concepto de difusion en un curso de "
+        "electroquimica."
+    ),
+    "pelicula_rc": (
+        "Recubrimientos organicos (pintura, resina epoxica) sobre "
+        "metal, en las primeras etapas de exposicion al ambiente: "
+        "el agua y los iones ya empezaron a penetrar por poros o "
+        "microdefectos (por eso hay una Rpo medible, no infinita), "
+        "pero todavia no llegan hasta el metal para iniciar corrosion."
+    ),
+    "pelicula_cpe": (
+        "Igual que pelicula_rc, pero en recubrimientos con superficie "
+        "menos uniforme (texturizados, con carga de pigmento visible, "
+        "o ya con cierta degradacion superficial) -- el caso mas "
+        "comun en la practica, porque casi ningun recubrimiento real "
+        "es perfectamente liso."
+    ),
+    "pelicula_transferencia_carga": (
+        "Paneles pintados o piezas metalicas recubiertas donde el "
+        "recubrimiento ya empezo a fallar de forma visible: se "
+        "reporta tipicamente en estudios de degradacion acelerada de "
+        "pinturas anticorrosivas (camara de niebla salina) cuando ya "
+        "aparecen los primeros puntos de oxido bajo la pelicula."
+    ),
+    "pelicula_cpe_transferencia": (
+        "El caso mas comun en estudios reales de recubrimientos "
+        "anticorrosivos ya en falla: paneles de acero pintados "
+        "expuestos a ambientes salinos o humedos, donde tanto el "
+        "recubrimiento como el metal corroido debajo tienen "
+        "superficies no ideales."
+    ),
+    "pelicula_transf_difusion": (
+        "Recubrimientos con defectos ya avanzados, donde ademas de la "
+        "corrosion activa hay una limitacion notable de oxigeno u "
+        "otra especie llegando al sitio de reaccion -- comun en "
+        "estudios de larga duracion (semanas o meses) de degradacion "
+        "de pinturas, o en recubrimientos gruesos donde los productos "
+        "de corrosion empiezan a acumularse y dificultar el acceso de "
+        "reactivos frescos."
+    ),
+    "dos_constantes_tiempo_rc": (
+        "Materiales compuestos con dos fases razonablemente uniformes "
+        "(sin necesidad de invocar un CPE), o dos capas de "
+        "recubrimiento distintas (un primer y un segundo recubrimiento "
+        "aplicados uno sobre otro) cuando ambas se comportan de forma "
+        "cercana a la ideal."
+    ),
+    "tres_constantes_tiempo": (
+        "En teoria, sistemas con tres procesos distintos (por ejemplo, "
+        "un recubrimiento de dos capas mas la corrosion del metal "
+        "base). En la PRACTICA, es dificil encontrar un reporte "
+        "publicado que use este circuito con confianza, precisamente "
+        "por la fragilidad ante el ruido descrita arriba -- la mayoria "
+        "de los estudios reales prefieren simplificar a dos procesos "
+        "(dos_constantes_tiempo) incluso cuando fisicamente podria "
+        "haber un tercero, porque los datos rara vez alcanzan a "
+        "distinguir los tres con confianza."
+    ),
     "dos_constantes_tiempo": (
         "Tipico de sistemas con DOS capas o interfaces distintas "
         "trabajando a velocidades diferentes: metal recubierto con "
@@ -235,6 +378,14 @@ NOMBRES_BONITOS = {
     "randles_warburg_semiinfinito": "Randles con Warburg semi-infinito",
     "dos_constantes_tiempo": "Dos constantes de tiempo",
     "bucle_inductivo": "Con bucle inductivo (intermediario adsorbido)",
+    "randles_cpe_warburg": "Randles CPE Warburg",
+    "pelicula_rc": "Pelicula RC",
+    "pelicula_cpe": "Pelicula CPE",
+    "pelicula_transferencia_carga": "Pelicula + transferencia de carga",
+    "pelicula_cpe_transferencia": "Pelicula CPE + transferencia",
+    "pelicula_transf_difusion": "Pelicula + transferencia + difusion",
+    "dos_constantes_tiempo_rc": "Dos constantes de tiempo RC",
+    "tres_constantes_tiempo": "Tres constantes de tiempo",
 }
 
 NOMBRES_PARAMETROS_BONITOS = {
@@ -254,8 +405,20 @@ NOMBRES_PARAMETROS_BONITOS = {
     "R2": "Resistencia del proceso 2 (R2)",
     "Q2": "Magnitud del CPE del proceso 2 (Q2)",
     "n2": "Exponente del CPE del proceso 2 (n2)",
-    "R3": "Resistencia de la relajacion adsorbida (R3)",
-    "L1": "Inductancia de la relajacion adsorbida (L1)",
+    "R3": "Resistencia del proceso 3 (R3)",
+    "Q3": "Magnitud del CPE del proceso 3 (Q3)",
+    "n3": "Exponente del CPE del proceso 3 (n3)",
+    "Rad": "Resistencia de la relajacion adsorbida (Rad)",
+    "Lad": "Inductancia de la relajacion adsorbida (Lad)",
+    "Aw": "Coeficiente de Warburg (Aw)",
+    "Rpo": "Resistencia de poro del recubrimiento (Rpo)",
+    "Ccoat": "Capacitancia del recubrimiento (Ccoat)",
+    "Qcoat": "Magnitud del CPE del recubrimiento (Qcoat)",
+    "ncoat": "Exponente del CPE del recubrimiento (ncoat)",
+    "Qdl": "Magnitud del CPE de doble capa (Qdl)",
+    "ndl": "Exponente del CPE de doble capa (ndl)",
+    "C1": "Capacitancia del proceso 1 (C1)",
+    "C2": "Capacitancia del proceso 2 (C2)",
 }
 
 # ---------------------------------------------------------------------------
@@ -337,20 +500,44 @@ REGLAS_PARAMETRO["R1"] = REGLAS_PARAMETRO["R2"] = REGLAS_PARAMETRO["Rct"].replac
 )
 REGLAS_PARAMETRO["Q1"] = REGLAS_PARAMETRO["Q2"] = REGLAS_PARAMETRO["Q"]
 REGLAS_PARAMETRO["n1"] = REGLAS_PARAMETRO["n2"] = REGLAS_PARAMETRO["n"]
-REGLAS_PARAMETRO["R3"] = (
-    "Estimacion inicial: a frecuencia muy baja, el inductor L1 se "
+REGLAS_PARAMETRO["R3"] = REGLAS_PARAMETRO["Rct"].replace("Rct", "R3")
+REGLAS_PARAMETRO["Q3"] = REGLAS_PARAMETRO["Q"]
+REGLAS_PARAMETRO["n3"] = REGLAS_PARAMETRO["n"]
+REGLAS_PARAMETRO["Rad"] = (
+    "Estimacion inicial: a frecuencia muy baja, el inductor Lad se "
     "comporta como un corto circuito y el CPE como un circuito "
-    "abierto -- solo quedan Rct y R3 en paralelo. Con el valor medido "
-    "en la frecuencia mas baja se despeja R3, conociendo ya el valor "
-    "estimado de Rct."
+    "abierto -- solo quedan Rct y Rad en paralelo. Con el valor "
+    "medido en la frecuencia mas baja se despeja Rad, conociendo ya "
+    "el valor estimado de Rct."
 )
-REGLAS_PARAMETRO["L1"] = (
+REGLAS_PARAMETRO["Lad"] = (
     "Estimacion inicial: se busca la frecuencia donde la curva cruza "
     "el eje (donde termina el semicirculo capacitivo y empieza el "
     "bucle inductivo) -- esa frecuencia marca la escala de tiempo de "
-    "la relajacion (tau = L1/R3), asi que L1 se despeja de ahi usando "
-    "el R3 ya estimado."
+    "la relajacion (tau = Lad/Rad), asi que Lad se despeja de ahi "
+    "usando el Rad ya estimado."
 )
+REGLAS_PARAMETRO["Aw"] = (
+    "Estimacion inicial: se mide cuanta resistencia EXTRA aparece en "
+    "la frecuencia mas baja medida, mas alla de lo que ya explican las "
+    "demas resistencias del circuito, y se multiplica por la raiz "
+    "cuadrada de esa frecuencia angular -- para deshacer la relacion "
+    "Z_Warburg = Aw x (1-j) / raiz(omega) propia de este elemento."
+)
+REGLAS_PARAMETRO["Rpo"] = REGLAS_PARAMETRO["Rct"].replace("Rct", "Rpo")
+REGLAS_PARAMETRO["Ccoat"] = REGLAS_PARAMETRO["Cdl"].replace(
+    "Rct", "Rpo"
+).replace("Cdl", "Ccoat")
+REGLAS_PARAMETRO["Qcoat"] = REGLAS_PARAMETRO["Q"]
+REGLAS_PARAMETRO["ncoat"] = REGLAS_PARAMETRO["n"]
+REGLAS_PARAMETRO["Qdl"] = REGLAS_PARAMETRO["Q"]
+REGLAS_PARAMETRO["ndl"] = REGLAS_PARAMETRO["n"]
+REGLAS_PARAMETRO["C1"] = REGLAS_PARAMETRO["Cdl"].replace(
+    "Rct", "R1"
+).replace("Cdl", "C1")
+REGLAS_PARAMETRO["C2"] = REGLAS_PARAMETRO["Cdl"].replace(
+    "Rct", "R2"
+).replace("Cdl", "C2")
 
 
 def texto_como_se_obtienen_parametros():

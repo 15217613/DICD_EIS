@@ -20,6 +20,7 @@ Lo que NO resuelve impedance.py (es el aporte propio del proyecto):
 
 import numpy as np
 import warnings
+from itertools import combinations
 from scipy.signal import savgol_filter, find_peaks
 from impedance.models.circuits import CustomCircuit
 from impedance.validation import linKK, circuit_elements
@@ -41,6 +42,18 @@ circuit_elements["np"] = np
 # ajustar_circuito), porque Wo_tau puede tener 200%+ de error de
 # partida en cualquiera de los dos casos.
 CIRCUITOS_CON_WARBURG = ("randles_warburg", "randles_warburg_semiinfinito")
+
+# Circuitos con topologia "Rs + dos ramas R-CPE en serie" (misma
+# ambiguedad de fondo que dos_constantes_tiempo: dos procesos con
+# tiempos de relajacion parecidos se pueden confundir entre si).
+# pelicula_cpe_transferencia usa el MISMO string de impedance.py que
+# dos_constantes_tiempo, solo con nombres de parametro distintos.
+CIRCUITOS_DOS_TC_CPE = ("dos_constantes_tiempo", "pelicula_cpe_transferencia")
+
+# Misma idea, pero con capacitores IDEALES en vez de CPE.
+# pelicula_transferencia_carga y dos_constantes_tiempo_rc comparten el
+# mismo string de impedance.py.
+CIRCUITOS_DOS_TC_IDEAL = ("pelicula_transferencia_carga", "dos_constantes_tiempo_rc")
 
 
 # ---------------------------------------------------------------------------
@@ -132,6 +145,169 @@ def estimar_valores_iniciales_multiples_dos_tc(frecuencias, Z):
     return guesses
 
 
+def estimar_valores_iniciales_multiples_dos_tc_ideal(frecuencias, Z):
+    """
+    Igual que estimar_valores_iniciales_multiples_dos_tc, pero para la
+    variante con capacitores IDEALES (pelicula_transferencia_carga,
+    dos_constantes_tiempo_rc) en vez de CPE. Se escribio como funcion
+    aparte (en vez de agregarle un parametro a la version CPE) para no
+    arriesgar romper la version ya probada -- duplica algo de codigo,
+    a cambio de menos riesgo.
+
+    Devuelve una LISTA de listas [Rs, R1, C1, R2, C2] (un candidato por
+    cada posible valle).
+    """
+    Rs_inicial = Z.real[np.argmax(frecuencias)]
+    Z_imag_suave = savgol_filter(-Z.imag, window_length=7, polyorder=2)
+    omega = 2 * np.pi * frecuencias
+
+    minimos_locales, _ = find_peaks(-Z_imag_suave)
+    candidatos_valle = list(minimos_locales) + [len(frecuencias) // 2]
+    candidatos_valle = sorted(set(
+        idx for idx in candidatos_valle if 2 < idx < len(frecuencias) - 3
+    ))
+    if not candidatos_valle:
+        candidatos_valle = [len(frecuencias) // 2]
+
+    guesses = []
+    for idx_valle in candidatos_valle:
+        idx_pico1 = np.argmax(Z_imag_suave[:idx_valle + 1])
+        R1 = max(2 * (Z.real[idx_pico1] - Rs_inicial), 1e-2)
+        C1 = 1 / (omega[idx_pico1] * R1)
+
+        idx_pico2 = idx_valle + np.argmax(Z_imag_suave[idx_valle:])
+        R2 = max(2 * (Z.real[idx_pico2] - Z.real[idx_valle]), 1e-2)
+        C2 = 1 / (omega[idx_pico2] * R2)
+
+        guesses.append([Rs_inicial, R1, C1, R2, C2])
+
+    return guesses
+
+
+def estimar_valores_iniciales_multiples_pelicula_transf_difusion(frecuencias, Z):
+    """
+    Version para pelicula_transf_difusion (capa + transferencia de
+    carga + difusion): misma deteccion de valle SIN umbral de
+    prominencia que las funciones anteriores (confirmado con pruebas:
+    un umbral de prominencia fijo, como el que usa
+    detectar_semicirculos(), puede fallar en detectar el SEGUNDO
+    semicirculo cuando es mucho mas chico que el primero -- exactamente
+    el caso tipico aqui, donde el semicirculo de la capa suele ser
+    mucho mas grande que el de transferencia de carga).
+
+    Ademas del R/C de cada rama, estima Aw (el coeficiente de Warburg
+    simple) a partir de la resistencia "extra" que aparece en la
+    frecuencia mas baja medida, mas alla de lo que ya explican Rs, R1
+    y R2 -- la misma idea que se usa en randles_cpe_warburg.
+
+    Devuelve una LISTA de listas [Rs, R1, C1, R2, Aw, C2].
+    """
+    Rs_inicial = Z.real[np.argmax(frecuencias)]
+    Z_imag_suave = savgol_filter(-Z.imag, window_length=7, polyorder=2)
+    omega = 2 * np.pi * frecuencias
+
+    minimos_locales, _ = find_peaks(-Z_imag_suave)
+    candidatos_valle = list(minimos_locales) + [len(frecuencias) // 2]
+    candidatos_valle = sorted(set(
+        idx for idx in candidatos_valle if 2 < idx < len(frecuencias) - 3
+    ))
+    if not candidatos_valle:
+        candidatos_valle = [len(frecuencias) // 2]
+
+    idx_baja = np.argmin(frecuencias)
+    omega_baja = omega[idx_baja]
+
+    guesses = []
+    for idx_valle in candidatos_valle:
+        idx_pico1 = np.argmax(Z_imag_suave[:idx_valle + 1])
+        R1 = max(2 * (Z.real[idx_pico1] - Rs_inicial), 1e-2)
+        C1 = 1 / (omega[idx_pico1] * R1)
+
+        idx_pico2 = idx_valle + np.argmax(Z_imag_suave[idx_valle:])
+        R2 = max(2 * (Z.real[idx_pico2] - Z.real[idx_valle]), 1e-2)
+        C2 = 1 / (omega[idx_pico2] * R2)
+
+        Aw = max((Z.real[idx_baja] - Rs_inicial - R1 - R2) * np.sqrt(omega_baja), 1e-3)
+
+        guesses.append([Rs_inicial, R1, C1, R2, Aw, C2])
+
+    return guesses
+
+
+def estimar_valores_iniciales_multiples_tres_tc(frecuencias, Z):
+    """
+    Version para tres_constantes_tiempo: en vez de UN valle (que divide
+    la curva en dos), se necesitan DOS valles (que la dividen en tres
+    segmentos). Se generan candidatos probando TODAS las combinaciones
+    de pares de valles detectados (mas un respaldo de "tercios" del
+    rango si no se detectan suficientes valles), limitando la cantidad
+    total para no disparar el tiempo de computo.
+
+    ADVERTENCIA DE ROBUSTEZ (confirmado con pruebas): a diferencia de
+    los demas circuitos de esta biblioteca, aqui NINGUNA cantidad de
+    candidatos de arranque resuelve el problema de fondo -- incluso
+    arrancando del valor EXACTO verdadero, el ruido tipico de una
+    medicion real (1%) ya produce errores grandes en el ajuste. Ver
+    circuits.py::tres_constantes_tiempo para el detalle completo.
+
+    Ademas, se confirmo una capa ADICIONAL de fragilidad: incluso con
+    ruido casi nulo, el paso de "elegir el candidato con menor error
+    residual ponderado" (en ajustar_circuito) puede escoger un
+    candidato DISTINTO al que realmente recupera los parametros
+    correctos -- con 10 parametros correlacionados, existen
+    combinaciones casi-degeneradas que ajustan la curva casi tan bien
+    como la solucion verdadera. Es decir: el problema no es solo
+    "encontrar un buen punto de partida" (eso SI se logra, ver
+    test_estimacion_de_candidatos_incluye_uno_cercano_a_la_verdad_con_ruido_bajo
+    en tests/unit/test_tres_constantes_tiempo.py), sino que ni
+    siquiera el criterio de "menor residual" garantiza elegir ese buen
+    candidato entre los demas.
+
+    Devuelve una LISTA de listas
+    [Rs, R1, Q1, n1, R2, Q2, n2, R3, Q3, n3].
+    """
+    Rs_inicial = Z.real[np.argmax(frecuencias)]
+    Z_imag_suave = savgol_filter(-Z.imag, window_length=7, polyorder=2)
+    omega = 2 * np.pi * frecuencias
+
+    minimos_locales, _ = find_peaks(-Z_imag_suave)
+    candidatos_indices = sorted(set(
+        idx for idx in minimos_locales if 2 < idx < len(frecuencias) - 3
+    ))
+    respaldo = [len(frecuencias) // 3, 2 * len(frecuencias) // 3]
+    todos_candidatos = sorted(set(candidatos_indices) | set(respaldo))
+
+    pares_valle = [
+        (v1, v2) for v1, v2 in combinations(todos_candidatos, 2) if v2 - v1 >= 2
+    ]
+    if not pares_valle:
+        pares_valle = [(len(frecuencias) // 3, 2 * len(frecuencias) // 3)]
+    # Limite para no disparar el tiempo de ajuste: cada candidato
+    # implica un fit completo de 10 parametros.
+    pares_valle = pares_valle[:20]
+
+    guesses = []
+    for idx_valle1, idx_valle2 in pares_valle:
+        idx_pico1 = np.argmax(Z_imag_suave[:idx_valle1 + 1])
+        R1 = max(2 * (Z.real[idx_pico1] - Rs_inicial), 1e-2)
+        n1 = 0.8
+        Q1 = 1 / (omega[idx_pico1] ** n1 * R1)
+
+        idx_pico2 = idx_valle1 + np.argmax(Z_imag_suave[idx_valle1:idx_valle2 + 1])
+        R2 = max(2 * (Z.real[idx_pico2] - Z.real[idx_valle1]), 1e-2)
+        n2 = 0.8
+        Q2 = 1 / (omega[idx_pico2] ** n2 * R2)
+
+        idx_pico3 = idx_valle2 + np.argmax(Z_imag_suave[idx_valle2:])
+        R3 = max(2 * (Z.real[idx_pico3] - Z.real[idx_valle2]), 1e-2)
+        n3 = 0.8
+        Q3 = 1 / (omega[idx_pico3] ** n3 * R3)
+
+        guesses.append([Rs_inicial, R1, Q1, n1, R2, Q2, n2, R3, Q3, n3])
+
+    return guesses
+
+
 def estimar_valores_iniciales(nombre_circuito, frecuencias, Z):
     """
     Calcula valores de partida a partir de la forma de la curva, en el
@@ -192,16 +368,38 @@ def estimar_valores_iniciales(nombre_circuito, frecuencias, Z):
         C_inicial = 1 / (omega[idx_pico] * R_inicial)
         return [R_inicial, C_inicial]
 
-    elif nombre_circuito == "randles_simple":
+    elif nombre_circuito in ("randles_simple", "pelicula_rc"):
+        # pelicula_rc usa el MISMO string de impedance.py que
+        # randles_simple (Rs + R en paralelo con C) -- solo cambia la
+        # interpretacion (Rpo/Ccoat de un recubrimiento en vez de
+        # Rct/Cdl de una doble capa), asi que la estimacion geometrica
+        # es identica.
         idx_pico = np.argmax(-Z.imag)
         Cdl_inicial = 1 / (omega[idx_pico] * Rct_inicial)
         return [Rs_inicial, Rct_inicial, Cdl_inicial]
 
-    elif nombre_circuito == "randles_cpe":
+    elif nombre_circuito in ("randles_cpe", "pelicula_cpe"):
         idx_pico = np.argmax(-Z.imag)
         n_inicial = 0.8
         Q_inicial = 1 / (omega[idx_pico] ** n_inicial * Rct_inicial)
         return [Rs_inicial, Rct_inicial, Q_inicial, n_inicial]
+
+    elif nombre_circuito == "randles_cpe_warburg":
+        # Warburg semi-infinito clasico (un solo parametro, Aw): se
+        # estima a partir de la resistencia "extra" en la frecuencia
+        # mas baja medida, multiplicada por raiz(omega) para deshacer
+        # la dependencia de Z_W = Aw*(1-j)/raiz(omega) -- la misma
+        # logica que ya se usa para Wo_mag, adaptada a este elemento.
+        idx_pico = np.argmax(-Z.imag)
+        n_inicial = 0.8
+        Q_inicial = 1 / (omega[idx_pico] ** n_inicial * Rct_inicial)
+
+        idx_baja = np.argmin(frecuencias)
+        Aw_inicial = max(
+            (Z.real[idx_baja] - Rs_inicial - Rct_inicial) * np.sqrt(omega[idx_baja]),
+            1e-3,
+        )
+        return [Rs_inicial, Rct_inicial, Aw_inicial, Q_inicial, n_inicial]
 
     elif nombre_circuito in CIRCUITOS_CON_WARBURG:
         # randles_warburg (Ws, frontera cerrada) y
@@ -222,7 +420,11 @@ def estimar_valores_iniciales(nombre_circuito, frecuencias, Z):
         return [Rs_inicial, Rct_inicial, Wo_mag_inicial, Wo_tau_inicial,
                 Q_inicial, n_inicial]
 
-    elif nombre_circuito == "dos_constantes_tiempo":
+    elif nombre_circuito in CIRCUITOS_DOS_TC_CPE:
+        # pelicula_cpe_transferencia usa el MISMO string que
+        # dos_constantes_tiempo -- la estimacion geometrica es
+        # identica, solo cambia como se INTERPRETAN los parametros
+        # resultantes (capa+metal en vez de "proceso 1/proceso 2").
         Z_imag_suave = savgol_filter(-Z.imag, window_length=7, polyorder=2)
 
         altura_minima = 0.15 * np.max(Z_imag_suave)
@@ -248,6 +450,93 @@ def estimar_valores_iniciales(nombre_circuito, frecuencias, Z):
 
         return [Rs_inicial, R1_inicial, Q1_inicial, n1_inicial,
                 R2_inicial, Q2_inicial, n2_inicial]
+
+    elif nombre_circuito in CIRCUITOS_DOS_TC_IDEAL:
+        # Version con capacitores ideales (sin CPE) de la rama
+        # anterior -- misma deteccion de valle, formula de C en vez
+        # de Q/n (equivalente a asumir n=1, el caso ideal).
+        Z_imag_suave = savgol_filter(-Z.imag, window_length=7, polyorder=2)
+
+        altura_minima = 0.15 * np.max(Z_imag_suave)
+        picos, _ = find_peaks(Z_imag_suave, prominence=altura_minima)
+
+        if len(picos) < 2:
+            idx_valle = len(frecuencias) // 2
+        else:
+            picos_ordenados_por_altura = picos[np.argsort(Z_imag_suave[picos])[::-1]]
+            dos_picos_reales = np.sort(picos_ordenados_por_altura[:2])
+            tramo = Z_imag_suave[dos_picos_reales[0]:dos_picos_reales[1]]
+            idx_valle = dos_picos_reales[0] + np.argmin(tramo)
+
+        idx_pico1 = np.argmax(Z_imag_suave[:idx_valle + 1])
+        R1_inicial = max(2 * (Z.real[idx_pico1] - Rs_inicial), 1e-2)
+        C1_inicial = 1 / (omega[idx_pico1] * R1_inicial)
+
+        idx_pico2 = idx_valle + np.argmax(Z_imag_suave[idx_valle:])
+        R2_inicial = max(2 * (Z.real[idx_pico2] - Z.real[idx_valle]), 1e-2)
+        C2_inicial = 1 / (omega[idx_pico2] * R2_inicial)
+
+        return [Rs_inicial, R1_inicial, C1_inicial, R2_inicial, C2_inicial]
+
+    elif nombre_circuito == "pelicula_transf_difusion":
+        # Tres elementos: capa (R1,C1) + transferencia de carga con
+        # difusion (R2, Aw, C2). Se usa el mismo enfoque SIN umbral de
+        # prominencia que CIRCUITOS_DOS_TC_IDEAL -- confirmado con
+        # pruebas: un umbral fijo puede no detectar el segundo
+        # semicirculo si es mucho mas chico que el de la capa.
+        Z_imag_suave = savgol_filter(-Z.imag, window_length=7, polyorder=2)
+        minimos_locales, _ = find_peaks(-Z_imag_suave)
+        candidatos_valle = list(minimos_locales) + [len(frecuencias) // 2]
+        candidatos_valle = sorted(set(
+            idx for idx in candidatos_valle if 2 < idx < len(frecuencias) - 3
+        ))
+        idx_valle = candidatos_valle[0] if candidatos_valle else len(frecuencias) // 2
+
+        idx_pico1 = np.argmax(Z_imag_suave[:idx_valle + 1])
+        R1_inicial = max(2 * (Z.real[idx_pico1] - Rs_inicial), 1e-2)
+        C1_inicial = 1 / (omega[idx_pico1] * R1_inicial)
+
+        idx_pico2 = idx_valle + np.argmax(Z_imag_suave[idx_valle:])
+        R2_inicial = max(2 * (Z.real[idx_pico2] - Z.real[idx_valle]), 1e-2)
+        C2_inicial = 1 / (omega[idx_pico2] * R2_inicial)
+
+        idx_baja = np.argmin(frecuencias)
+        Aw_inicial = max(
+            (Z.real[idx_baja] - Rs_inicial - R1_inicial - R2_inicial)
+            * np.sqrt(omega[idx_baja]),
+            1e-3,
+        )
+
+        return [Rs_inicial, R1_inicial, C1_inicial, R2_inicial,
+                Aw_inicial, C2_inicial]
+
+    elif nombre_circuito == "tres_constantes_tiempo":
+        # Estimacion de un solo candidato (division en tercios simple)
+        # -- ajustar_circuito la reemplaza con multiples candidatos de
+        # verdad. Esta version solo sirve de respaldo/valor por
+        # defecto, igual que la rama simple de dos_constantes_tiempo.
+        Z_imag_suave = savgol_filter(-Z.imag, window_length=7, polyorder=2)
+        tercio1 = len(frecuencias) // 3
+        tercio2 = 2 * len(frecuencias) // 3
+
+        idx_pico1 = np.argmax(Z_imag_suave[:tercio1 + 1])
+        R1_inicial = max(2 * (Z.real[idx_pico1] - Rs_inicial), 1e-2)
+        n1_inicial = 0.8
+        Q1_inicial = 1 / (omega[idx_pico1] ** n1_inicial * R1_inicial)
+
+        idx_pico2 = tercio1 + np.argmax(Z_imag_suave[tercio1:tercio2 + 1])
+        R2_inicial = max(2 * (Z.real[idx_pico2] - Z.real[tercio1]), 1e-2)
+        n2_inicial = 0.8
+        Q2_inicial = 1 / (omega[idx_pico2] ** n2_inicial * R2_inicial)
+
+        idx_pico3 = tercio2 + np.argmax(Z_imag_suave[tercio2:])
+        R3_inicial = max(2 * (Z.real[idx_pico3] - Z.real[tercio2]), 1e-2)
+        n3_inicial = 0.8
+        Q3_inicial = 1 / (omega[idx_pico3] ** n3_inicial * R3_inicial)
+
+        return [Rs_inicial, R1_inicial, Q1_inicial, n1_inicial,
+                R2_inicial, Q2_inicial, n2_inicial,
+                R3_inicial, Q3_inicial, n3_inicial]
 
     elif nombre_circuito == "bucle_inductivo":
         # Pico del semicirculo capacitivo -- np.argmax(-Z.imag) nunca
@@ -410,8 +699,97 @@ def ajustar_circuito(nombre_circuito, frecuencias, Z):
             )
         return mejor_circuit
 
-    if nombre_circuito == "dos_constantes_tiempo":
+    if nombre_circuito == "tres_constantes_tiempo":
+        # ADVERTENCIA (ver circuits.py y textos_educativos.py): NINGUNA
+        # cantidad de candidatos de arranque resuelve la fragilidad de
+        # fondo de este circuito -- se prueban 20 combinaciones de
+        # doble valle de todas formas, porque ayuda en el margen, pero
+        # no se debe esperar el mismo nivel de confiabilidad que el
+        # resto de la biblioteca.
+        candidatos = estimar_valores_iniciales_multiples_tres_tc(frecuencias, Z)
+        mejor_circuit = None
+        mejor_error = np.inf
+        for guess in candidatos:
+            try:
+                circuit = CustomCircuit(circuit=info.circuito, initial_guess=guess,
+                                         name=nombre_circuito)
+                circuit.fit(frecuencias, Z, maxfev=300, weight_by_modulus=True)
+            except Exception:
+                continue
+            Z_modelo = circuit.predict(frecuencias)
+            peso = 1 / np.abs(Z)
+            error = np.sum(((Z_modelo.real - Z.real) * peso) ** 2
+                          + ((Z_modelo.imag - Z.imag) * peso) ** 2)
+            if error < mejor_error:
+                mejor_error = error
+                mejor_circuit = circuit
+        if mejor_circuit is None:
+            raise RuntimeError("ningun candidato de doble valle logro converger")
+        return mejor_circuit
+
+    if nombre_circuito in CIRCUITOS_DOS_TC_CPE:
         candidatos = estimar_valores_iniciales_multiples_dos_tc(frecuencias, Z)
+        mejor_circuit = None
+        mejor_error = np.inf
+        for guess in candidatos:
+            try:
+                circuit = CustomCircuit(circuit=info.circuito, initial_guess=guess,
+                                         name=nombre_circuito)
+                circuit.fit(frecuencias, Z, maxfev=300, weight_by_modulus=True)
+            except Exception:
+                continue
+            Z_modelo = circuit.predict(frecuencias)
+            peso = 1 / np.abs(Z)
+            error = np.sum(((Z_modelo.real - Z.real) * peso) ** 2
+                          + ((Z_modelo.imag - Z.imag) * peso) ** 2)
+            if error < mejor_error:
+                mejor_error = error
+                mejor_circuit = circuit
+        if mejor_circuit is None:
+            raise RuntimeError("ningun candidato de valle logro converger")
+        return mejor_circuit
+
+    if nombre_circuito in CIRCUITOS_DOS_TC_IDEAL:
+        # Version con capacitores ideales -- mismo patron de multiples
+        # candidatos + try/except que CIRCUITOS_DOS_TC_CPE, pero con la
+        # funcion de estimacion ideal (sin CPE).
+        candidatos = estimar_valores_iniciales_multiples_dos_tc_ideal(frecuencias, Z)
+        mejor_circuit = None
+        mejor_error = np.inf
+        for guess in candidatos:
+            try:
+                circuit = CustomCircuit(circuit=info.circuito, initial_guess=guess,
+                                         name=nombre_circuito)
+                circuit.fit(frecuencias, Z, maxfev=300, weight_by_modulus=True)
+            except Exception:
+                continue
+            Z_modelo = circuit.predict(frecuencias)
+            peso = 1 / np.abs(Z)
+            error = np.sum(((Z_modelo.real - Z.real) * peso) ** 2
+                          + ((Z_modelo.imag - Z.imag) * peso) ** 2)
+            if error < mejor_error:
+                mejor_error = error
+                mejor_circuit = circuit
+        if mejor_circuit is None:
+            raise RuntimeError("ningun candidato de valle logro converger")
+        return mejor_circuit
+
+    if nombre_circuito == "pelicula_transf_difusion":
+        # NOTA DE ROBUSTEZ (confirmado con pruebas, 10 semillas): este
+        # es el circuito mas complejo de la biblioteca (3 elementos:
+        # capa + transferencia de carga + difusion) y el que mas
+        # candidatos necesita -- 5/10 corridas exitosas con parametros
+        # bien separados en frecuencia, comparado con 7/10 de
+        # CIRCUITOS_DOS_TC_IDEAL y 10/10 de circuitos mas simples. Es
+        # el nivel de fragilidad esperado dado que combina TODAS las
+        # fuentes de ambiguedad ya conocidas (dos tiempos de relajacion
+        # parecidos + un parametro de Warburg dificil de adivinar) al
+        # mismo tiempo. Se acepta este nivel, igual que se acepta para
+        # dos_constantes_tiempo, confiando en que el filtro de AIC/BIC
+        # descarte los ajustes que salgan mal.
+        candidatos = estimar_valores_iniciales_multiples_pelicula_transf_difusion(
+            frecuencias, Z
+        )
         mejor_circuit = None
         mejor_error = np.inf
         for guess in candidatos:

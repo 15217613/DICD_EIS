@@ -45,7 +45,15 @@ def test_numero_de_parametros_coincide_con_el_string_del_circuito():
         "randles_warburg": 6,    # Rs, Rct, Wo_mag, Wo_tau, Q, n
         "randles_warburg_semiinfinito": 6,  # Rs, Rct, Wo_mag, Wo_tau, Q, n
         "dos_constantes_tiempo": 7,  # Rs, R1, Q1, n1, R2, Q2, n2
-        "bucle_inductivo": 6,  # Rs, Rct, Q, n, R3, L1
+        "bucle_inductivo": 6,  # Rs, Rct, Q, n, Rad, Lad
+        "randles_cpe_warburg": 5,  # Rs, Rct, Aw, Q, n
+        "pelicula_rc": 3,  # Rs, Rpo, Ccoat
+        "pelicula_cpe": 4,  # Rs, Rpo, Qcoat, ncoat
+        "pelicula_transferencia_carga": 5,  # Rs, Rpo, Ccoat, Rct, Cdl
+        "pelicula_cpe_transferencia": 7,  # Rs, Rpo, Qcoat, ncoat, Rct, Qdl, ndl
+        "pelicula_transf_difusion": 6,  # Rs, Rpo, Ccoat, Rct, Aw, Cdl
+        "dos_constantes_tiempo_rc": 5,  # Rs, R1, C1, R2, C2
+        "tres_constantes_tiempo": 10,  # Rs, R1,Q1,n1, R2,Q2,n2, R3,Q3,n3
     }
     for nombre, cantidad in conteo_esperado.items():
         assert len(CIRCUITOS[nombre].parametros) == cantidad
@@ -67,3 +75,27 @@ def test_randles_warburg_y_semiinfinito_usan_elementos_warburg_distintos():
     assert "Ws1" in finito.circuito
     assert "Wo1" in semiinfinito.circuito
     assert finito.circuito != semiinfinito.circuito
+
+
+def test_circuitos_de_pelicula_duplican_topologia_a_proposito():
+    """
+    Documenta explicitamente una decision de diseno: 3 circuitos de
+    'pelicula' comparten el MISMO string de impedance.py que un
+    circuito ya existente (misma matematica, distinto nombre/contexto
+    de interpretacion) -- se decidio mantenerlos como entradas
+    separadas en vez de fusionarlos. Esta prueba no verifica que eso
+    sea "correcto" (es una decision, no un hecho matematico), solo
+    que la duplicacion sea la ESPERADA y no un descuido accidental.
+    """
+    duplicados_esperados = [
+        ("pelicula_rc", "randles_simple"),
+        ("pelicula_cpe", "randles_cpe"),
+        ("pelicula_cpe_transferencia", "dos_constantes_tiempo"),
+        ("pelicula_transferencia_carga", "dos_constantes_tiempo_rc"),
+    ]
+    for nombre_a, nombre_b in duplicados_esperados:
+        assert CIRCUITOS[nombre_a].circuito == CIRCUITOS[nombre_b].circuito, (
+            f"{nombre_a} y {nombre_b} deberian compartir el mismo string "
+            "de impedance.py -- si esto falla, alguno de los dos cambio "
+            "y la documentacion de esta decision quedo desactualizada"
+        )
