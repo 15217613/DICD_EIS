@@ -146,3 +146,11 @@ def test_error_relativo_porcentual_es_menor_para_el_ajuste_real(datos_randles_cp
     error_manual = impedance.calcular_error_relativo_porcentual(Z_manual, Z)
 
     assert error_ajuste < error_manual
+
+def test_calcular_magnitud_fase_con_valores_conocidos():
+    # Z = 3+4j tiene magnitud 5 (3-4-5, el triangulo clasico) y fase
+    # de aprox 53.13 grados (arctan(4/3)).
+    Z = np.array([3 + 4j, 1 + 0j, 0 + 1j])
+    magnitud, fase = impedance.calcular_magnitud_fase(Z)
+    assert np.allclose(magnitud, [5.0, 1.0, 1.0])
+    assert np.allclose(fase, [53.13010235, 0.0, 90.0])

@@ -28,6 +28,7 @@ from app.presentation import textos_educativos
 from app.presentation.widgets.panel_archivo import PanelArchivo
 from app.presentation.widgets.grafica_nyquist import PanelGraficaNyquist
 from app.presentation.widgets.tabla_resultados import PanelResultados
+from app.presentation.widgets.grafica_bode import PanelGraficaBode
 
 import os
 import tempfile
@@ -66,12 +67,14 @@ class VentanaPrincipal(QMainWindow):
 
         self.panel_resultados = PanelResultados()
         self.panel_grafica = PanelGraficaNyquist()
+        self.panel_bode = PanelGraficaBode()
         self.tab_aprender = QTextBrowser()
         self.tab_aprender.setHtml(textos_educativos.TEXTO_APRENDER_HTML)
 
         self.tabs = QTabWidget()
         self.tabs.addTab(self.panel_resultados, "Resultados")
         self.tabs.addTab(self.panel_grafica, "Grafica de Nyquist")
+        self.tabs.addTab(self.panel_bode, "Grafica de Bode")
         self.tabs.addTab(self.tab_aprender, "Aprender")
 
         layout_principal.addWidget(self.panel_archivo)
@@ -102,6 +105,7 @@ class VentanaPrincipal(QMainWindow):
             os.path.basename(ruta), ruta, len(frecuencias)
         )
         self.panel_grafica.mostrar_datos_crudos(frecuencias, Z)
+        self.panel_bode.mostrar_datos_crudos(frecuencias, Z)
 
     # ------------------------------------------------------------------
     # Analisis en segundo plano
@@ -126,6 +130,7 @@ class VentanaPrincipal(QMainWindow):
         self.ultimo_resultado = resultado
         self.panel_resultados.mostrar(resultado)
         self.panel_grafica.mostrar_resultados(resultado)
+        self.panel_bode.mostrar_resultados(resultado)
         self.panel_archivo.habilitar_exportar(len(resultado.mejores) > 0)
         self.tabs.setCurrentWidget(self.panel_resultados)
 

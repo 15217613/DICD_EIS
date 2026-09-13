@@ -908,3 +908,22 @@ def calcular_pesos_akaike(lista_aic):
     verosimilitud_relativa = np.exp(-0.5 * delta_aic)
     pesos = verosimilitud_relativa / verosimilitud_relativa.sum()
     return pesos.tolist()
+
+# ---------------------------------------------------------------------------
+# Magnitud y fase (para la grafica de Bode)
+# ---------------------------------------------------------------------------
+def calcular_magnitud_fase(Z):
+    """
+    Convierte impedancia compleja (Z) a magnitud |Z| y fase (en grados).
+
+    Se usa para la grafica de Bode: a diferencia de Nyquist (que mete
+    parte real e imaginaria en un solo plano), Bode muestra estas dos
+    cantidades por separado, cada una contra la frecuencia -- por eso
+    hace falta esta conversion.
+
+    Devuelve (magnitud, fase_en_grados), ambos arrays del mismo tamano
+    que Z.
+    """
+    magnitud = np.abs(Z)
+    fase_grados = np.degrees(np.angle(Z))
+    return magnitud, fase_grados
