@@ -92,3 +92,38 @@ def test_exportar_reporte_sin_circuitos_validos_no_truena(tmp_path):
         resultado_vacio, ruta_salida, nombre_archivo_datos="vacio.csv"
     )
     assert _es_pdf_valido(ruta_salida)
+
+def test_exportar_reporte_con_grafica_de_bode(tmp_path):
+    """Confirma que la seccion de Bode se agrega quando se provee su
+    imagen -- comparando el tamano del PDF con y sin ella (misma idea
+    que ya se usa para confirmar que la imagen de Nyquist se incluye)."""
+    frecuencias, Z = eis_service.cargar_archivo(RUTA_EJEMPLO)
+    resultado = analysis_service.ejecutar_analisis(frecuencias, Z)
+
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    ruta_imagen_bode = str(tmp_path / "bode.png")
+    magnitud = np.abs(Z)
+    fig, (ax1, ax2) = plt.subplots(2, 1)
+    ax1.loglog(frecuencias, magnitud, "o")
+    ax2.semilogx(frecuencias, np.angle(Z, deg=True), "o")
+    fig.savefig(ruta_imagen_bode)
+    plt.close(fig)
+
+    ruta_sin_bode = str(tmp_path / "reporte_sin_bode.pdf")
+    export_service.exportar_reporte_pdf(
+        resultado, ruta_sin_bode, nombre_archivo_datos="datos_prueba.csv"
+    )
+
+    ruta_con_bode = str(tmp_path / "reporte_con_bode.pdf")
+    export_service.exportar_reporte_pdf(
+        resultado, ruta_con_bode,
+        nombre_archivo_datos="datos_prueba.csv",
+        ruta_imagen_bode=ruta_imagen_bode,
+    )
+
+    assert _es_pdf_valido(ruta_con_bode)
+    assert os.path.getsize(ruta_con_bode) > os.path.getsize(ruta_sin_bode)

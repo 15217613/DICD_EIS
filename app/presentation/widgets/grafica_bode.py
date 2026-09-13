@@ -72,7 +72,7 @@ class PanelGraficaBode(QWidget):
 
         self.figura = Figure(figsize=(7, 6))
         self.ax_magnitud = self.figura.add_subplot(211)
-        self.ax_fase = self.figura.add_subplot(212, sharex=self.ax_magnitud)
+        self.ax_fase = self.figura.add_subplot(212)
         self.canvas = FigureCanvasQTAgg(self.figura)
         layout.addWidget(self.canvas, stretch=1)
 

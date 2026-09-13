@@ -31,6 +31,7 @@ def exportar_reporte_pdf(
     ruta_salida: str,
     nombre_archivo_datos: str = "",
     ruta_imagen_grafica: str = None,
+    ruta_imagen_bode: str = None,
     nombres_bonitos: dict = None,
     nombres_parametros_bonitos: dict = None,
     ejemplos_sistemas: dict = None,
@@ -207,5 +208,24 @@ def exportar_reporte_pdf(
         bloques.append({"tipo": "encabezado", "texto": "4. Grafica de Nyquist"})
         bloques.append({"tipo": "imagen", "ruta": ruta_imagen_grafica, "ancho_cm": 15})
 
+    # --- Seccion 5: grafica de Bode ---
+    if ruta_imagen_bode:
+        bloques.append({"tipo": "espacio", "alto_pt": 12})
+        bloques.append({
+            "tipo": "encabezado", "texto": "5. Grafica de Bode (magnitud y fase)",
+        })
+        bloques.append({
+            "tipo": "parrafo",
+            "texto": (
+                "A diferencia de Nyquist (que combina parte real e "
+                "imaginaria en un solo plano), Bode muestra por separado "
+                "como cambian la magnitud |Z| y la fase de la impedancia "
+                "conforme cambia la frecuencia -- util para ver directamente "
+                "a que frecuencia ocurre cada proceso."
+            ),
+        })
+        bloques.append({"tipo": "imagen", "ruta": ruta_imagen_bode, "ancho_cm": 15})
+
     pdf_writer.escribir_pdf(ruta_salida, bloques, titulo_documento="Reporte de Analisis EIS")
+
     return ruta_salida

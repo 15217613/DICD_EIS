@@ -159,11 +159,15 @@ class VentanaPrincipal(QMainWindow):
                 ruta_imagen = os.path.join(carpeta_temporal, "grafica_nyquist.png")
                 self.panel_grafica.guardar_grafica_como_imagen(ruta_imagen)
 
+                ruta_imagen_bode = os.path.join(carpeta_temporal, "grafica_bode.png")
+                self.panel_bode.guardar_grafica_como_imagen(ruta_imagen_bode)
+
                 export_service.exportar_reporte_pdf(
                     self.ultimo_resultado,
                     ruta_salida,
                     nombre_archivo_datos=os.path.basename(self.ruta_archivo or ""),
                     ruta_imagen_grafica=ruta_imagen,
+                    ruta_imagen_bode=ruta_imagen_bode,
                     nombres_bonitos=textos_educativos.NOMBRES_BONITOS,
                     nombres_parametros_bonitos=textos_educativos.NOMBRES_PARAMETROS_BONITOS,
                     ejemplos_sistemas=textos_educativos.EJEMPLOS_SISTEMAS,
