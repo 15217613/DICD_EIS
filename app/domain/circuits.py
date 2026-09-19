@@ -295,3 +295,40 @@ FORMULAS_HTML = {
         "&radic;(R<sub>ion</sub>Z<sub>s</sub>)&middot;coth&radic;(R<sub>ion</sub>/Z<sub>s</sub>)"
     ),
 }
+
+# Valores "tipicos" por NOMBRE de parametro -- un punto de partida
+# razonable para el generador didactico de datos sinteticos (pantalla
+# "Importar Datos"), no una recomendacion cientifica. Se tomaron de
+# los mismos valores que ya se usaban en tests/fixtures/synthetic_data.py
+# para generar datos de prueba con dos procesos bien SEPARADOS en
+# frecuencia (para que, por ejemplo, dos_constantes_tiempo muestre dos
+# semicirculos distinguibles en vez de uno solo enmascarando al otro).
+# Como el mismo nombre de parametro (ej. "R1") se reutiliza en varios
+# circuitos con roles distintos, esto es un compromiso -- el usuario
+# siempre puede ajustar los valores despues en la interfaz.
+VALORES_TIPICOS = {
+    "R": 200.0, "C": 3e-6, "L": 5e-4,
+    "Rs": 20.0, "Rct": 500.0, "Cdl": 1e-5,
+    "Q": 1e-5, "n": 0.85,
+    "Wo_mag": 150.0, "Wo_tau": 8.0,
+    "Aw": 50.0,
+    "R1": 5000.0, "Q1": 1e-6, "n1": 0.8, "C1": 3e-8,
+    "R2": 500.0, "Q2": 1e-4, "n2": 0.8, "C2": 3e-5,
+    "R3": 500.0, "Q3": 1.2e-3, "n3": 0.8,
+    "A": 500.0, "B": 500.0, "a": 1.0, "b": 0.05,
+    "Rion": 2000.0, "Qs": 1e-4, "gamma": 0.9,
+    "Rad": 100.0, "Lad": 5.0,
+    "Rpo": 5000.0, "Ccoat": 3e-8, "Qcoat": 1e-5, "ncoat": 0.8,
+    "Qdl": 1e-4, "ndl": 0.8,
+}
+ 
+ 
+def valores_por_defecto(nombre_circuito):
+    """Lista de valores iniciales razonables para el generador
+    didactico, en el mismo orden que CIRCUITOS[nombre_circuito].parametros.
+    Un parametro sin entrada en VALORES_TIPICOS (no deberia pasar,
+    pero por seguridad) usa 1.0 en vez de tronar."""
+    return [
+        VALORES_TIPICOS.get(nombre_parametro, 1.0)
+        for nombre_parametro in CIRCUITOS[nombre_circuito].parametros
+    ]

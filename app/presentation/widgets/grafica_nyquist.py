@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Pestana "Grafica de Nyquist": el selector de circuito, la grafica
+Widget de la grafica de Nyquist: el selector de circuito, la grafica
 interactiva (clic en un punto resalta su fila en la tabla, y
 viceversa), la tabla de datos crudos, y la franja de diagrama+formula
 del circuito elegido.
@@ -19,6 +19,21 @@ hace falta (cambiar de circuito, cargar un archivo, terminar un
 analisis), en vez de crear una figura nueva cada vez -- eso era lo que
 se sentia lento en una version anterior (crear widgets de Qt y
 renderizar formulas en LaTeX tiene un costo real).
+
+NOTA SOBRE "permitir_modelado" (agregado junto con el menu lateral de
+navegacion, ver panel_navegacion.py): el flujo de la aplicacion ahora
+separa "Explorar Espectros" (solo ver las curvas) de "Modelar
+Circuito" (elegir un circuito, ver su diagrama, ajustar parametros).
+Como el selector de circuito y el simulador viven pegados a esta
+misma grafica, la solucion elegida fue crear DOS INSTANCIAS de este
+widget: una con permitir_modelado=True (para el paso "Modelar
+Circuito", con todo visible) y otra con permitir_modelado=False (para
+"Explorar Espectros", donde el selector/diagrama/parametros
+simplemente no se agregan a la pantalla -- el combo sigue existiendo
+por dentro para no romper el resto del codigo, solo que nadie lo ve ni
+lo puede tocar, asi que siempre se queda en "Automatico"). Se eligio
+esto -- en vez de partir el archivo en pedazos mas chicos -- para no
+arriesgar romper la sincronizacion grafica<->tabla ya probada.
 """
 
 from PySide6.QtCore import Qt
@@ -37,8 +52,15 @@ from app.presentation.widgets import circuit_diagram
 
 
 class PanelGraficaNyquist(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, permitir_modelado=True):
         super().__init__(parent)
+
+        # Si False: el selector de circuito, el diagrama/formula y el
+        # simulador de parametros no se muestran -- este widget queda
+        # como una vista "solo lectura" de los datos (grafica + tabla
+        # + clic sincronizado), pensada para el paso "Explorar
+        # Espectros" del flujo.
+        self._permitir_modelado = permitir_modelado
 
         # Estado propio de este widget (la ventana principal no
         # necesita saber nada de esto).
@@ -108,6 +130,13 @@ class PanelGraficaNyquist(QWidget):
         layout_general = QVBoxLayout(self)
 
         # --- Selector de circuito ---
+        # Se crea siempre (el resto del codigo lee
+        # self.combo_circuito_grafica.currentData() sin importar el
+        # modo), pero solo se AGREGA a la pantalla si
+        # permitir_modelado es True. Si no se agrega, el combo nunca
+        # recibe clics -- se queda para siempre en "Automatico"
+        # (indice 0, dato None), que es justamente el comportamiento
+        # de "solo lectura" que se busca para Explorar Espectros.
         fila_combo = QHBoxLayout()
         fila_combo.addWidget(QLabel("Circuito a mostrar:"))
         self.combo_circuito_grafica = QComboBox()
@@ -121,7 +150,8 @@ class PanelGraficaNyquist(QWidget):
         )
         fila_combo.addWidget(self.combo_circuito_grafica)
         fila_combo.addStretch()
-        layout_general.addLayout(fila_combo)
+        if self._permitir_modelado:
+            layout_general.addLayout(fila_combo)
 
         # --- Franja compacta: diagrama pequeno + formula (se agrega al
         # layout DESPUES de la grafica y la tabla, mas abajo, para que
@@ -224,8 +254,9 @@ class PanelGraficaNyquist(QWidget):
         splitter.setSizes([700, 420])
 
         layout_general.addWidget(splitter, stretch=1)
-        layout_general.addWidget(self.panel_info_circuito)
-        layout_general.addWidget(self.panel_parametros)
+        if self._permitir_modelado:
+            layout_general.addWidget(self.panel_info_circuito)
+            layout_general.addWidget(self.panel_parametros)
 
     def _llenar_tabla_datos(self, frecuencias, Z):
         self._sincronizando = True

@@ -927,3 +927,43 @@ def calcular_magnitud_fase(Z):
     magnitud = np.abs(Z)
     fase_grados = np.degrees(np.angle(Z))
     return magnitud, fase_grados
+
+# ---------------------------------------------------------------------------
+# Generador didactico de datos sinteticos
+# ---------------------------------------------------------------------------
+def simular_impedancia_con_ruido(nombre_circuito, valores, frecuencias,
+                                  ruido_relativo=0.0, semilla=None):
+    """
+    Evalua la formula de un circuito con valores dados (igual que
+    calcular_impedancia_con_parametros) y ademas genera una version con
+    ruido gaussiano proporcional a la magnitud de cada punto -- el
+    mismo tipo de ruido que ya se usaba SOLO para las pruebas
+    automatizadas (ver tests/fixtures/synthetic_data.py). Aqui se
+    vuelve una funcion de PRODUCCION: es el motor del "Generador
+    Didactico" de la pantalla de Importar Datos, pensado para que un
+    estudiante genere un caso de prueba con una "respuesta correcta"
+    conocida de antemano (los mismos valores que eligio), y luego vea
+    si el analisis automatico los recupera.
+ 
+    ruido_relativo: 0.01 = 1% de ruido (mismo nivel usado en todas las
+    pruebas del proyecto). 0 (o menor) devuelve la curva limpia dos
+    veces, sin generar numeros aleatorios.
+ 
+    Devuelve (Z_teorico, Z_con_ruido) -- ambos del mismo tamano que
+    frecuencias. Z_teorico ("la respuesta correcta") es util para
+    mostrarse de referencia en una vista previa ANTES de generar el
+    conjunto de datos con ruido, para que el usuario vea que forma
+    tendra su curva antes de comprometerse con ella.
+    """
+    Z_teorico = calcular_impedancia_con_parametros(
+        nombre_circuito, frecuencias, valores
+    )
+    if ruido_relativo <= 0:
+        return Z_teorico, Z_teorico.copy()
+ 
+    rng = np.random.default_rng(semilla)
+    ruido = ruido_relativo * np.abs(Z_teorico) * (
+        rng.standard_normal(len(Z_teorico)) + 1j * rng.standard_normal(len(Z_teorico))
+    )
+    Z_con_ruido = Z_teorico + ruido
+    return Z_teorico, Z_con_ruido
