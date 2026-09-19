@@ -23,6 +23,19 @@ Interpretar y Pedagogia -> Generar Informe. Por dentro sigue siendo un
 QStackedWidget (una sola pantalla que cambia) -- el menu lateral solo
 decide cual pagina de ese stack se ve.
 
+CAMBIO ADICIONAL DE ESTA VERSION: el boton "Analizar" (el que corre
+Kramers-Kronig + ajusta todos los circuitos + calcula AIC/BIC/pesos de
+Akaike) se movio de la pantalla "Importar Datos" (panel_archivo.py) a
+la pantalla "Modelar Circuito" (nuevo widget panel_analisis.py). Por
+que: cargar datos y decidir correr el analisis estadistico completo
+son dos decisiones distintas -- con "Explorar Espectros" ya separado
+de "Modelar Circuito", tiene mas sentido que el boton este en el paso
+donde esa decision realmente se usa. Los datos crudos (la curva de
+Nyquist tal cual, sin ajustar nada todavia) YA se mandaban a las DOS
+graficas de Nyquist (Explorar Espectros y Modelar Circuito) apenas se
+cargaban -- ver _distribuir_datos_nuevos mas abajo -- eso no cambio,
+ya funcionaba asi desde antes de este cambio.
+
 Nota sobre "dos graficas de Nyquist": el selector de circuito, el
 diagrama y el simulador de parametros viven pegados a la grafica de
 Nyquist (ver grafica_nyquist.py). Como "Explorar Espectros" (solo ver
@@ -44,6 +57,7 @@ from app.application import eis_service, export_service
 from app.infrastructure.workers import HiloAnalisis
 from app.presentation import textos_educativos
 from app.presentation.widgets.panel_archivo import PanelArchivo
+from app.presentation.widgets.panel_analisis import PanelAnalisis
 from app.presentation.widgets.panel_generador_sintetico import PanelGeneradorSintetico
 from app.presentation.widgets.panel_navegacion import PanelNavegacion
 from app.presentation.widgets.panel_validacion_kk import PanelValidacionKK
@@ -104,7 +118,6 @@ class VentanaPrincipal(QMainWindow):
         # --- Widgets de contenido (uno por paso del flujo) ---
         self.panel_archivo = PanelArchivo()
         self.panel_archivo.archivo_elegido.connect(self._al_elegir_archivo)
-        self.panel_archivo.analizar_solicitado.connect(self._iniciar_analisis)
         self.panel_archivo.exportar_solicitado.connect(self._exportar_reporte)
 
         self.panel_generador_sintetico = PanelGeneradorSintetico()
@@ -121,8 +134,11 @@ class VentanaPrincipal(QMainWindow):
         self.panel_bode = PanelGraficaBode()
 
         # Version completa (con selector+diagrama+parametros) para
-        # Modelar Circuito.
+        # Modelar Circuito, mas el boton de Analizar (ver
+        # panel_analisis.py: aqui es donde ahora vive esa decision).
         self.panel_grafica = PanelGraficaNyquist(permitir_modelado=True)
+        self.panel_analisis = PanelAnalisis()
+        self.panel_analisis.analizar_solicitado.connect(self._iniciar_analisis)
         self.panel_resultados = PanelResultados()
 
         self.panel_residuos = PanelResiduos()
@@ -150,19 +166,20 @@ class VentanaPrincipal(QMainWindow):
         pagina_explorar.addTab(self.panel_grafica_exploracion, "Nyquist")
         pagina_explorar.addTab(self.panel_bode, "Bode")
 
-        # --- Paso 4: Modelar Circuito = grafica+selector+parametros
-        # (arriba) + tabla comparativa de circuitos (abajo), en un
-        # splitter para que se pueda ajustar cuanto espacio ocupa cada
-        # parte. ---
+        # --- Paso 4: Modelar Circuito = boton de Analizar (arriba,
+        # compacto) + grafica+selector+parametros + tabla comparativa
+        # de circuitos (abajo, en un splitter para poder ajustar
+        # cuanto espacio ocupa cada parte). ---
         pagina_modelar = QWidget()
         layout_modelar = QVBoxLayout(pagina_modelar)
         layout_modelar.setContentsMargins(4, 4, 4, 4)
+        layout_modelar.addWidget(self.panel_analisis)
         splitter_modelar = QSplitter(Qt.Vertical)
         splitter_modelar.addWidget(self.panel_grafica)
         splitter_modelar.addWidget(self.panel_resultados)
         splitter_modelar.setStretchFactor(0, 3)
         splitter_modelar.setStretchFactor(1, 2)
-        layout_modelar.addWidget(splitter_modelar)
+        layout_modelar.addWidget(splitter_modelar, stretch=1)
 
         # --- Stack: una sola pantalla visible a la vez, en el MISMO
         # orden que panel_navegacion.PASOS. ---
@@ -199,8 +216,12 @@ class VentanaPrincipal(QMainWindow):
         """
         Lee el archivo INMEDIATAMENTE al seleccionarlo (no hasta que se
         de clic en "Analizar"), para poder mostrar la tabla de datos
-        crudos de una vez y avisar de inmediato si el archivo tiene un
-        problema de formato, sin esperar a correr todo el analisis.
+        crudos y la curva de Nyquist de una vez -- en ambas pantallas
+        de grafica (Explorar Espectros y Modelar Circuito, ver
+        _distribuir_datos_nuevos) -- y avisar de inmediato si el
+        archivo tiene un problema de formato, sin esperar a que el
+        usuario navegue hasta "Modelar Circuito" y de clic en
+        "Analizar".
         """
         try:
             frecuencias, Z = eis_service.cargar_archivo(ruta)
@@ -229,7 +250,18 @@ class VentanaPrincipal(QMainWindow):
     def _distribuir_datos_nuevos(self, frecuencias, Z):
         """Un conjunto de datos nuevo (venga de un archivo real o del
         generador sintetico) invalida cualquier resultado anterior --
-        se avisa a TODAS las paginas que dependen de datos/resultados."""
+        se avisa a TODAS las paginas que dependen de datos/resultados.
+
+        IMPORTANTE (esto ya funcionaba antes de este cambio, se deja
+        documentado a proposito): los datos CRUDOS -- la curva de
+        Nyquist tal cual, sin ajustar ningun circuito todavia -- se
+        mandan de una vez tanto a panel_grafica_exploracion (paso
+        "Explorar Espectros") como a panel_grafica (paso "Modelar
+        Circuito"). Por eso un estudiante puede ver su curva y hasta
+        elegir un circuito para comparar visualmente (con la
+        estimacion geometrica inicial) ANTES de correr el analisis
+        estadistico completo con el boton de panel_analisis.
+        """
         self.frecuencias_cargadas = frecuencias
         self.Z_cargada = Z
         self.ultimo_resultado = None
@@ -241,20 +273,26 @@ class VentanaPrincipal(QMainWindow):
         self.panel_residuos.mostrar_datos_crudos(frecuencias, Z)
         self.panel_generar_informe.habilitar(False)
 
+        # El boton de Analizar (en "Modelar Circuito") se habilita en
+        # cuanto hay datos cargados, y su progreso se reinicia -- un
+        # archivo/generacion nueva invalida cualquier corrida anterior.
+        self.panel_analisis.habilitar_analizar(True)
+        self.panel_analisis.reiniciar_progreso()
+
     # ------------------------------------------------------------------
     # Analisis en segundo plano
     # ------------------------------------------------------------------
     def _iniciar_analisis(self):
         if self.frecuencias_cargadas is None:
             return
-        self.panel_archivo.habilitar_analizar(False)
-        self.panel_archivo.reiniciar_progreso()
+        self.panel_analisis.habilitar_analizar(False)
+        self.panel_analisis.reiniciar_progreso()
 
         self.hilo = HiloAnalisis(self.frecuencias_cargadas, self.Z_cargada)
-        self.hilo.progreso.connect(self.panel_archivo.actualizar_progreso)
+        self.hilo.progreso.connect(self.panel_analisis.actualizar_progreso)
         self.hilo.terminado.connect(self._mostrar_resultados)
         self.hilo.fallo.connect(self._mostrar_error)
-        self.hilo.finished.connect(lambda: self.panel_archivo.habilitar_analizar(True))
+        self.hilo.finished.connect(lambda: self.panel_analisis.habilitar_analizar(True))
         self.hilo.start()
 
     def _mostrar_error(self, mensaje):
